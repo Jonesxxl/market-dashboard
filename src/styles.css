@@ -1,0 +1,28 @@
+@import '@fontsource/space-grotesk/400.css';
+@import '@fontsource/space-grotesk/500.css';
+@import '@fontsource/space-grotesk/700.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/ibm-plex-mono/600.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-ink text-fg font-sans;
+  background-image:
+    linear-gradient(rgba(34,198,184,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34,198,184,.025) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+/* Chart-Texte: Halo gegen Überlappungen */
+.spark svg text { font-family: theme('fontFamily.mono'); font-size: 10px; fill: theme('colors.faint');
+  paint-order: stroke; stroke: #0B1220; stroke-width: 3px; stroke-linejoin: round; }
+.spark { cursor: crosshair; }
+
+#charttip { position: fixed; display: none; z-index: 60; pointer-events: none;
+  background: theme('colors.panel2'); border: 1px solid theme('colors.lo'); color: theme('colors.fg');
+  font-family: theme('fontFamily.mono'); font-size: 11.5px; padding: 5px 10px; border-radius: 7px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.55); white-space: nowrap; }
