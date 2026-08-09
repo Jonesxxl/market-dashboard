@@ -2,10 +2,63 @@
   command = "npm ci && npx ng build"
   publish = "dist/macro-ng/browser"
 
-[functions]
-  directory = "netlify/functions"
+# Angular 22 verlangt Node >= 24.15.0 — ohne Pin kann ein Wechsel des Netlify-Defaults
+# den Build ohne Vorwarnung brechen. Major gepinnt, damit Patches weiter durchlaufen.
+[build.environment]
+  NODE_VERSION = "24"
 
-# SPA-Fallback — /api/* wird von den Functions VOR den Redirects bedient
+# ───────────────────────── Caching ─────────────────────────
+# Nur gehashte Build-Artefakte werden dauerhaft gecacht: ändert sich der Inhalt, ändert
+# sich der Dateiname. Cache-Control steht bewusst NICHT im globalen /*-Block — sonst
+# gäbe es doppelte Header-Werte auf denselben Pfaden.
+
+[[headers]]
+  for = "/main-*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/chunk-*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/styles-*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Schriften — der Application-Builder legt sie gehasht unter media/ ab
+[[headers]]
+  for = "/media/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Die Daten selbst: kurz cachen, aber immer revalidieren. Der tägliche Lauf schreibt
+# einmal pro Tag — fünf Minuten Toleranz sparen Requests, ohne dass etwas veraltet wirkt.
+[[headers]]
+  for = "/snapshot.json"
+  [headers.values]
+    Cache-Control = "public, max-age=300, must-revalidate"
+
+# docs.html samt docs.css/docs.js ist nicht gehasht → bewusst kein Immutable-Caching.
+# index.html behält Netlifys Default (max-age=0, must-revalidate), damit Deploys sofort greifen.
+
+# ───────────────────── Security-Header ─────────────────────
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # script-src kommt ohne 'unsafe-inline' aus: die Doku-Seite lädt ihr JS extern.
+    # style-src braucht 'unsafe-inline' — Angular schreibt [style.x]-Bindings als Attribut.
+    Content-Security-Policy = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://gc.zgo.at; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://papayo.goatcounter.com; font-src 'self'; connect-src 'self' https://raw.githubusercontent.com https://papayo.goatcounter.com; upgrade-insecure-requests"
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Permissions-Policy = "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+
+# ──────────────────────── Routing ──────────────────────────
+# SPA-Fallback. Echte Dateien (docs.html, snapshot.json, robots.txt, sitemap.xml)
+# werden von Netlify vor den Redirects ausgeliefert.
 [[redirects]]
   from = "/*"
   to = "/index.html"

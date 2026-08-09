@@ -40,3 +40,12 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# Local Netlify folder
+.netlify
+
+# Claude Code — maschinenspezifische Einstellungen (launch.json bleibt eingecheckt)
+.claude/settings.local.json
+
+# Legt `netlify dev` für seinen Edge-Functions-Bootstrap an; dieses Projekt hat keine
+deno.lock
