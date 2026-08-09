@@ -36,6 +36,11 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://chipper-cucurucho-5d0a49.netlify.app/llms.txt</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
     <loc>https://chipper-cucurucho-5d0a49.netlify.app/impressum</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>

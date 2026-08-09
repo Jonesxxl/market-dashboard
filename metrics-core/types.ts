@@ -29,6 +29,11 @@ export interface MetricSnapshot {
   extra?: {
     riskLevels?: { r: number; price: number }[];
     ghosts?: { r: number; t: string }[];
+    /** Zusätzlich zum Heat-Verlauf einen Kurschart in Originalwährung zeigen.
+     *  Für Körbe sinnvoll, deren Heat-Wert allein keinen Kursverlauf erkennen lässt. */
+    priceChart?: boolean;
+    /** Erläuterung unter dem Kurschart — etwa die Bezugsgröße eines Index. */
+    priceNote?: string;
   };
 }
 

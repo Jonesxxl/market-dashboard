@@ -7,13 +7,17 @@ import { MarketDataService } from '../core/market-data.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MetricCardComponent],
   template: `
-    <div class="bg-panel border border-line rounded-2xl px-6 py-4 mb-4">
+    <div class="bg-panel border border-line rounded-2xl px-6 py-5 mb-4">
       <p class="text-[13.5px] text-muted leading-relaxed">
-        Alle Paare aus Dollar-Sicht: Steigt die Kurve, wird der Dollar gegenüber der jeweiligen Währung
-        <b class="text-fg">stärker</b> (Ausnahme EUR/USD: dort heißt steigend Euro-Stärke). Heat misst wie überall
-        im Dashboard, wie extrem der aktuelle Stand relativ zum eigenen 200-Tage-Trend ist — Währungen kennen keine
-        „Kaufzonen" wie Aktien, aber Extreme (unter 0,15 / über 0,85) markieren gedehnte Bewegungen, die historisch
-        oft zurückschwangen.
+        <b class="text-fg">Alle Paare notieren den Dollar als Basiswährung.</b> Eine steigende Kurve bedeutet
+        deshalb ausnahmslos: Der Dollar gewinnt gegenüber der jeweiligen Währung. Aus diesem Grund wird auch das
+        gewohnte EUR/USD hier als USD/EUR dargestellt — sonst liefe genau dieses eine Paar der Leserichtung aller
+        anderen entgegen.
+      </p>
+      <p class="text-[13.5px] text-muted leading-relaxed mt-3">
+        Heat misst wie überall im Dashboard, wie weit der aktuelle Stand vom eigenen 200-Tage-Trend abweicht.
+        Währungen kennen keine Kaufzonen wie Aktien — bei ihnen sind die Extreme das Signal: Werte unter 0,15 oder
+        über 0,85 markieren stark gedehnte Bewegungen, die in der Vergangenheit häufig zurückliefen.
       </p>
     </div>
     @for (m of fxMetrics(); track m.id) { <app-metric-card [m]="m"/> }

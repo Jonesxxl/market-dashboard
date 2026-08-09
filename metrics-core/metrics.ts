@@ -2,7 +2,7 @@
  *  Generator sehen sie automatisch. */
 import { computeHeat, computeRisk, defaultSignal, fmt } from './math';
 import { fetchCrypto, fetchCryptoBasket, fetchMarket } from './sources';
-import { MetricDefinition, MetricResult } from './types';
+import { MetricDefinition, MetricResult, Row } from './types';
 
 const round = (n: number) => Math.round(n);
 
@@ -88,10 +88,23 @@ const DAI_TOP_HOLDINGS: [string, string, string?][] = [
 crypto.push({
   id: 'dai-basket-heat',
   label: 'Digital-Asset-Basket · Anlehnung S&P Pantera Digital Asset Index',
-  sym: 'DAI-Proxy', assetClass: 'crypto', kind: 'heat', unit: '× Start', dec: 2, hex: '#6FCF97',
+  sym: 'DAI-Proxy', assetClass: 'crypto', kind: 'heat', unit: '$', dec: 0, hex: '#6FCF97',
   zones: [{ label: 'Kaufzone', text: '< 0.15', below: 0.15 }], hotAbove: 0.85,
-  fetch: ctx => fetchCryptoBasket(DAI_TOP_HOLDINGS, 1500, ctx),
+  /** Der Korb ist ein gleichgewichteter Index ohne eigenen Marktpreis. Damit er trotzdem
+   *  einen lesbaren Dollar-Verlauf bekommt, wird der auf 1 normierte Index mit 100 skaliert:
+   *  die Kurve zeigt dann den Wert von 100 $, am Startdatum gleichgewichtet investiert.
+   *  Der Heat-Wert bleibt davon unberührt, denn ln(kP / kSMA) = ln(P / SMA). */
+  fetch: async ctx => (await fetchCryptoBasket(DAI_TOP_HOLDINGS, 1500, ctx))
+    .map(([d, p]) => [d, p * 100] as Row),
   compute: rows => computeHeat(rows),
+  /* Kein Datum in der Notiz: `r.dates[0]` ist der Beginn der Heat-Reihe und liegt 200
+     Handelstage nach der Normierung — dort steht der Index längst über 100. */
+  extra: r => ({
+    priceChart: true,
+    priceNote: `Gleichgewichteter Index ohne eigenen Marktpreis: 100 $ entsprechen dem Stand am `
+      + `ersten Tag der gemeinsamen Kurshistorie aller Korbmitglieder — heute rund `
+      + `${fmt(r.current.price / 100, 1)} ×.`,
+  }),
   interpret: r => {
     const h = r.current.value;
     const base = h < 0.5
@@ -160,12 +173,20 @@ const equity: MetricDefinition[] = [
   },
 ];
 
-/* ===== Währungen ===== */
+/* ===== Währungen =====
+ * Alle Paare notieren den Dollar als Basiswährung: ein steigender Kurs bedeutet
+ * durchgehend einen stärkeren Dollar. Yahoo und Stooq liefern EUR/USD in der
+ * umgekehrten Konvention, deshalb wird dieses eine Paar invertiert (`invert: true`).
+ * Für den Heat-Wert ist das kein kosmetischer Eingriff: ln(1/P ÷ SMA200(1/P)) ist
+ * nicht das negierte ln(P ÷ SMA200(P)), das Perzentil wird also neu berechnet. */
 const fxDef = (id: string, label: string, sym: string, hex: string, y: string, s: string,
-  dec: number, up: string, down: string): MetricDefinition => ({
+  dec: number, up: string, down: string, invert = false): MetricDefinition => ({
   id, label, sym, assetClass: 'fx', kind: 'heat', unit: '', dec, hex,
   zones: [], hotAbove: null,
-  fetch: ctx => fetchMarket(ctx, y, s),
+  fetch: async ctx => {
+    const rows = await fetchMarket(ctx, y, s);
+    return invert ? rows.filter(([, p]) => p > 0).map(([d, p]) => [d, 1 / p] as Row) : rows;
+  },
   compute: rows => computeHeat(rows),
   interpret: r => fxInterpret(up, down, r, r.dates[0].slice(0, 4)),
 });
@@ -173,8 +194,9 @@ const fx: MetricDefinition[] = [
   fxDef('dxy', 'Dollar-Index', 'DXY', '#5FA8F5', 'DX-Y.NYB', '^dxy', 1,
     'Der Dollar gewinnt gegen den Korb der großen Währungen (EUR, JPY, GBP, …).',
     'Der Dollar verliert breit gegen die großen Währungen.'),
-  fxDef('eurusd', 'Euro / US-Dollar', 'EUR/USD', '#F2B33D', 'EURUSD=X', 'eurusd', 4,
-    'Der Euro ist stark zum Dollar.', 'Der Euro ist schwach zum Dollar.'),
+  fxDef('usdeur', 'US-Dollar / Euro', 'USD/EUR', '#F2B33D', 'EURUSD=X', 'eurusd', 4,
+    'Der Dollar ist stark zum Euro — für Anleger im Euroraum verteuern sich Dollar-Anlagen.',
+    'Der Dollar ist schwach zum Euro — Dollar-Anlagen sind aus Euro-Sicht günstiger.', true),
   fxDef('usdchf', 'US-Dollar / Schweizer Franken', 'USD/CHF', '#F0533F', 'CHF=X', 'usdchf', 4,
     'Der Franken schwächelt — ungewöhnlich, er ist die klassische Fluchtwährung.',
     'Der Franken ist stark — typisch in Stressphasen (sicherer Hafen).'),

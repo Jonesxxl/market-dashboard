@@ -9,6 +9,45 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  /* Einheitliche Bedienelemente. Alles Interaktive nutzt .btn — Navigation, Aktionen,
+     Links nach außen —, damit Höhe, Radius und Fokusring nirgends auseinanderlaufen. */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap
+           font-mono text-[12.5px] leading-none px-4 py-2.5 rounded-[10px]
+           border no-underline select-none cursor-pointer
+           transition-[color,background-color,border-color] duration-150;
+  }
+  /* Tastaturfokus muss auf dunklem Grund sichtbar sein — Maus-Klicks bleiben ringfrei. */
+  .btn:focus-visible,
+  a:focus-visible {
+    @apply outline-none ring-2 ring-lo/70 ring-offset-2 ring-offset-ink rounded-[10px];
+  }
+  .btn-ghost {
+    @apply bg-panel2 border-line text-muted hover:text-fg hover:border-lo/50 hover:bg-panel;
+  }
+  /* Aktive Route: ruhig markiert statt nur heller — die Kante trägt die Aussage.
+     Muss nach .btn-ghost stehen, sonst gewänne dessen :hover-Regel über der aktiven. */
+  .btn-on {
+    @apply bg-panel border-lo/70 text-fg hover:text-fg hover:border-lo hover:bg-panel;
+  }
+  /* Getroffene Wahl in einer Gruppe — trägt Farbe, damit sie sich vom Rest abhebt. */
+  .btn-primary {
+    @apply bg-lo border-lo text-ink font-bold hover:bg-lo hover:border-lo hover:text-ink;
+  }
+  /* Ausgewählt, aber nachrangig: nur Kante und Schrift markiert. */
+  .btn-sel {
+    @apply bg-panel border-lo/70 text-lo hover:text-lo hover:border-lo hover:bg-panel;
+  }
+  /* Kompakte Variante für dichte Gruppen wie die Asset-Auswahl. */
+  .btn-sm {
+    @apply px-2.5 py-1.5 text-[11.5px] rounded-lg;
+  }
+  .btn:disabled {
+    @apply opacity-45 cursor-not-allowed hover:text-muted hover:border-line hover:bg-panel2;
+  }
+}
+
 body {
   @apply bg-ink text-fg font-sans;
   background-image:

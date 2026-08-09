@@ -25,11 +25,9 @@ type Mode = 'dca' | 'rebalance';
     <div class="bg-panel border border-line rounded-2xl p-6 mb-4">
       <div class="flex gap-2 flex-wrap mb-5">
         @for (m of modes; track m.id) {
-          <button type="button" (click)="mode.set(m.id)"
-            class="font-mono text-[12.5px] px-4 py-2 rounded-[9px] border"
-            [class.bg-panel2]="mode() !== m.id" [class.border-line]="mode() !== m.id" [class.text-muted]="mode() !== m.id"
-            [class.bg-lo]="mode() === m.id" [class.border-lo]="mode() === m.id" [class.text-ink]="mode() === m.id"
-            [class.font-bold]="mode() === m.id">{{ m.label }}</button>
+          <button type="button" (click)="mode.set(m.id)" class="btn"
+            [class.btn-ghost]="mode() !== m.id" [class.btn-primary]="mode() === m.id"
+            [attr.aria-pressed]="mode() === m.id">{{ m.label }}</button>
         }
       </div>
 
@@ -38,10 +36,9 @@ type Mode = 'dca' | 'rebalance';
           <p class="font-mono text-[10.5px] tracking-wide uppercase text-faint mb-2">Risikoprofil</p>
           <div class="flex gap-2 flex-wrap">
             @for (p of profiles; track p.id) {
-              <button type="button" (click)="profileId.set(p.id)"
-                class="font-mono text-[12.5px] px-4 py-2 rounded-[9px] border"
-                [class.bg-panel2]="profileId() !== p.id" [class.border-line]="profileId() !== p.id" [class.text-muted]="profileId() !== p.id"
-                [class.border-lo]="profileId() === p.id" [class.text-lo]="profileId() === p.id">{{ p.label }}</button>
+              <button type="button" (click)="profileId.set(p.id)" class="btn"
+                [class.btn-ghost]="profileId() !== p.id" [class.btn-sel]="profileId() === p.id"
+                [attr.aria-pressed]="profileId() === p.id">{{ p.label }}</button>
             }
           </div>
           <p class="font-mono text-[10.5px] tracking-wide uppercase text-faint mt-5 mb-2">
@@ -52,10 +49,11 @@ type Mode = 'dca' | 'rebalance';
           <p class="font-mono text-[10.5px] tracking-wide uppercase text-faint mt-5 mb-2">Assets im Universum</p>
           <div class="flex gap-1.5 flex-wrap">
             @for (a of toggleableAssets; track a.id) {
-              <button type="button" (click)="toggleAsset(a.id)"
-                class="font-mono text-[11.5px] px-2.5 py-1 rounded-lg border"
-                [class.border-line]="!isActive(a.id)" [class.text-faint]="!isActive(a.id)" [class.line-through]="!isActive(a.id)"
-                [class.text-fg]="isActive(a.id)" [style.border-color]="isActive(a.id) ? a.hex : null">{{ a.label }}</button>
+              <button type="button" (click)="toggleAsset(a.id)" class="btn btn-sm"
+                [class.btn-ghost]="!isActive(a.id)" [class.line-through]="!isActive(a.id)"
+                [class.bg-panel]="isActive(a.id)" [class.text-fg]="isActive(a.id)"
+                [style.border-color]="isActive(a.id) ? a.hex : null"
+                [attr.aria-pressed]="isActive(a.id)">{{ a.label }}</button>
             }
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { sparklineSvg, TipData } from '../core/charts';
+import { priceSparklineSvg, sparklineSvg, TipData } from '../core/charts';
 import { fmt, MarketDataService, MetricSnapshot } from '../core/market-data.service';
 import { ChartComponent, RailComponent } from './ui';
 
@@ -32,6 +32,14 @@ import { ChartComponent, RailComponent } from './ui';
       <app-rail [value]="m().current.value" [ghosts]="m().extra?.ghosts ?? []"
         [zones]="zoneTriples()" [hotAbove]="m().hotAbove"/>
       @if (chart(); as c) { <app-chart [svg]="c.svg" [tip]="c.tip"/> }
+      @if (priceChart(); as pc) {
+        <div class="mt-4 pt-4 border-t border-line">
+          <app-chart [svg]="pc.svg" [tip]="pc.tip"/>
+          @if (m().extra?.priceNote; as note) {
+            <p class="font-mono text-[11px] text-faint mt-2">{{ note }}</p>
+          }
+        </div>
+      }
     </div>
   `,
 })
@@ -71,5 +79,12 @@ export class MetricCardComponent {
     const m = this.m();
     return sparklineSvg(m.series.months, m.series.values, m.hex, 6,
       m.kind === 'risk' ? 'Risk' : 'Heat', m.series.prices, m.unit);
+  });
+
+  /** Zusätzlicher Kursverlauf — nur wo der Heat-Wert allein den Kurs nicht erkennen lässt. */
+  protected readonly priceChart = computed<{ svg: string; tip: TipData } | null>(() => {
+    const m = this.m();
+    if (!m.extra?.priceChart) return null;
+    return priceSparklineSvg(m.series.months, m.series.prices, m.hex, 6, 'Kurs', m.unit, m.dec);
   });
 }
