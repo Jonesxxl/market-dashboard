@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "netlify-dist",
+      "runtimeExecutable": "netlify",
+      "runtimeArgs": ["dev", "--dir", "dist/macro-ng/browser", "--port", "8888"],
+      "port": 8888
+    }
+  ]
+}

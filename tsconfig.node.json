@@ -1,0 +1,17 @@
+/* Typprüfung für den Node-Teil: den täglichen Snapshot-Lauf und den geteilten Metrik-Kern.
+   Ohne diese Konfiguration bliebe scripts/build-snapshot.ts ungeprüft — tsx führt es aus,
+   ohne Typen zu prüfen, ein Fehler fiele also erst im Cron um 05:17 UTC auf. */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/node",
+    "types": ["node"],
+    "lib": ["ES2022"],
+    "module": "preserve",
+    "moduleResolution": "bundler"
+  },
+  "include": [
+    "scripts/**/*.ts",
+    "metrics-core/**/*.ts"
+  ]
+}

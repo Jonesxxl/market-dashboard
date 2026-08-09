@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://chipper-cucurucho-5d0a49.netlify.app/sitemap.xml

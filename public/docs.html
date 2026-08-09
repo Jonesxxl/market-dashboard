@@ -4,120 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Macro Risk Dashboard · Technisches Handbuch</title>
-<style>
-:root{
-  --bg:#070D18; --panel:#0D1626; --panel2:#0A1220; --line:#1B2940;
-  --text:#E8EEF7; --muted:#7E8DA6; --faint:#51607A;
-  --teal:#22C6B8; --amber:#F2B33D; --red:#F0533F; --blue:#5FA8F5; --violet:#8A7BF0;
-  --mono:'IBM Plex Mono',ui-monospace,monospace;
-  --sans:'Space Grotesk',system-ui,sans-serif;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto} *{animation:none!important;transition:none!important}}
-body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6;
-  background-image:linear-gradient(rgba(34,198,184,.03) 1px,transparent 1px),
-                   linear-gradient(90deg,rgba(34,198,184,.03) 1px,transparent 1px);
-  background-size:44px 44px}
-a{color:var(--teal)}
-.wrap{max-width:1120px;margin:0 auto;padding:0 22px 90px;display:grid;grid-template-columns:200px 1fr;gap:40px}
-@media(max-width:880px){.wrap{grid-template-columns:1fr;gap:0}}
-
-/* ---------- Hero ---------- */
-.hero{grid-column:1/-1;padding:70px 0 44px;border-bottom:1px solid var(--line);margin-bottom:44px}
-.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:2.5px;color:var(--teal);text-transform:uppercase;margin-bottom:14px}
-.eyebrow::before{content:'▮ ';animation:blink 1.2s steps(1) infinite}
-@keyframes blink{50%{opacity:0}}
-h1{font-size:clamp(30px,5vw,50px);font-weight:700;line-height:1.1;max-width:760px}
-h1 em{font-style:normal;color:var(--teal)}
-.sub{color:var(--muted);max-width:640px;margin-top:16px;font-size:15.5px}
-.pulseline{height:2px;margin-top:38px;background:var(--line);position:relative;overflow:hidden;border-radius:2px}
-.pulseline::after{content:'';position:absolute;top:0;left:-20%;width:20%;height:100%;
-  background:linear-gradient(90deg,transparent,var(--teal),transparent);animation:sweep 3.2s linear infinite}
-@keyframes sweep{to{left:120%}}
-
-/* ---------- Side-Nav ---------- */
-nav.side{position:sticky;top:28px;align-self:start;font-family:var(--mono);font-size:12px}
-nav.side a{display:block;color:var(--muted);text-decoration:none;padding:7px 0 7px 14px;border-left:2px solid var(--line)}
-nav.side a:hover,nav.side a.on{color:var(--teal);border-left-color:var(--teal)}
-@media(max-width:880px){nav.side{position:static;display:flex;gap:4px;overflow-x:auto;padding:14px 0;border-bottom:1px solid var(--line);margin-bottom:24px}
-  nav.side a{border-left:none;border-bottom:2px solid transparent;white-space:nowrap;padding:6px 10px}}
-
-/* ---------- Sections ---------- */
-main section{margin-bottom:64px;scroll-margin-top:24px}
-.mod{font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--faint);margin-bottom:8px}
-h2{font-size:24px;font-weight:700;margin-bottom:8px}
-.lead{color:var(--muted);max-width:680px;margin-bottom:22px;font-size:14.5px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 24px;margin-bottom:16px}
-code,kbd{font-family:var(--mono);font-size:.92em;background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--amber)}
-pre{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow-x:auto;
-  font-family:var(--mono);font-size:12.5px;line-height:1.55;position:relative}
-pre code{background:none;border:none;padding:0;color:var(--text)}
-.cbtn{position:absolute;top:8px;right:8px;background:var(--panel);border:1px solid var(--line);color:var(--muted);
-  font-family:var(--mono);font-size:10.5px;padding:4px 9px;border-radius:6px;cursor:pointer}
-.cbtn:hover{color:var(--teal);border-color:var(--teal)}
-button:focus-visible,[tabindex]:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
-
-/* ---------- Datenfluss-Diagramm ---------- */
-.flow{position:relative}
-.flow svg{width:100%;height:auto;display:block}
-.node{cursor:pointer}
-.node rect{fill:var(--panel);stroke:var(--line);stroke-width:1.2;rx:10}
-.node:hover rect,.node.on rect{stroke:var(--teal);filter:drop-shadow(0 0 7px rgba(34,198,184,.45))}
-.node text{font-family:var(--mono);fill:var(--text);font-size:11.5px}
-.node .tag{fill:var(--faint);font-size:9.5px}
-.edge{stroke:var(--line);stroke-width:1.4;fill:none}
-.pulse{fill:var(--teal);opacity:.9}
-.flowinfo{border:1px solid var(--line);border-left:3px solid var(--teal);border-radius:10px;
-  background:var(--panel2);padding:16px 18px;margin-top:14px;font-size:13.5px;color:var(--muted);min-height:74px}
-.flowinfo b{color:var(--text)}
-.flowinfo .t{font-family:var(--mono);font-size:11px;color:var(--teal);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:6px}
-
-/* ---------- Playground ---------- */
-.play{display:grid;grid-template-columns:1fr 240px;gap:26px;align-items:start}
-@media(max-width:760px){.play{grid-template-columns:1fr}}
-.slider{margin-bottom:18px}
-.slider label{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--muted);margin-bottom:6px}
-.slider label output{color:var(--text);font-weight:600}
-input[type=range]{width:100%;accent-color:var(--teal);height:22px}
-.readout{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:18px;text-align:center}
-.readout .v{font-family:var(--mono);font-size:44px;font-weight:600;line-height:1.05}
-.readout .l{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:6px}
-.readout .zone{margin-top:12px;font-size:12.5px;font-family:var(--mono);padding:6px 10px;border-radius:7px;border:1px solid var(--line);display:inline-block}
-.formula{font-family:var(--mono);font-size:13.5px;background:var(--panel2);border:1px solid var(--line);
-  border-radius:10px;padding:14px 18px;margin-bottom:20px;color:var(--amber);overflow-x:auto;white-space:nowrap}
-.formula i{color:var(--faint);font-style:normal}
-
-/* ---------- Zonen-Rail ---------- */
-.zrail{position:relative;height:86px;margin:26px 4px 4px;touch-action:none}
-.zrail .band{position:absolute;top:32px;left:0;right:0;height:14px;border-radius:7px;
-  background:linear-gradient(90deg,var(--teal) 0%,var(--teal) 15%,var(--amber) 50%,var(--red) 88%)}
-.zrail .tick{position:absolute;top:52px;font-family:var(--mono);font-size:10px;color:var(--faint);transform:translateX(-50%)}
-.zrail .handle{position:absolute;top:18px;width:5px;height:42px;background:var(--text);border-radius:3px;cursor:grab;
-  box-shadow:0 0 12px rgba(255,255,255,.5);transform:translateX(-50%)}
-.zrail .handle:active{cursor:grabbing}
-.zrail .handle em{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-style:normal;
-  font-family:var(--mono);font-size:12px;font-weight:600;white-space:nowrap}
-.zverdict{border:1px solid var(--line);border-radius:10px;background:var(--panel2);padding:16px 18px;
-  margin-top:16px;font-size:13.5px;color:var(--muted);min-height:66px}
-.zverdict b{color:var(--text)}
-
-/* ---------- Accordion ---------- */
-details{border:1px solid var(--line);border-radius:11px;background:var(--panel);margin-bottom:10px;overflow:hidden}
-summary{cursor:pointer;padding:15px 18px;font-weight:500;font-size:14.5px;list-style:none;display:flex;gap:12px;align-items:center}
-summary::-webkit-details-marker{display:none}
-summary::before{content:'+';font-family:var(--mono);color:var(--teal);width:16px;flex:none}
-details[open] summary::before{content:'–'}
-details .body{padding:0 18px 16px 46px;color:var(--muted);font-size:13.5px}
-details .body b{color:var(--text)}
-.stepnum{font-family:var(--mono);font-size:11px;color:var(--teal);border:1px solid var(--line);border-radius:6px;padding:2px 8px}
-
-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12.5px}
-th{text-align:left;color:var(--muted);font-weight:500;padding:7px 9px;border-bottom:1px solid var(--line)}
-td{padding:8px 9px;border-bottom:1px solid var(--panel2);vertical-align:top}
-td b{color:var(--teal)}
-footer{grid-column:1/-1;border-top:1px solid var(--line);padding-top:20px;color:var(--faint);font-size:12px;font-family:var(--mono)}
-</style>
+<link rel="stylesheet" href="/docs.css">
 <!-- Privacy-freundliches Tracking (GoatCounter, keine Cookies, keine personenbezogenen Daten) -->
 <script data-goatcounter="https://papayo.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
@@ -260,27 +147,29 @@ footer{grid-column:1/-1;border-top:1px solid var(--line);padding-top:20px;color:
 <section id="deploy">
   <div class="mod">MODUL 05 // BETRIEB</div>
   <h2>Deployment</h2>
-  <p class="lead">Zwei Dateien, ein Drag & Drop. Der Netlify-Proxy ist Pflicht für Metalle und Aktien — er umgeht
-  die CORS-Sperre von Stooq.</p>
-  <details open><summary><span class="stepnum">01</span> Proxy-Regel verstehen</summary><div class="body">
-    <pre><button class="cbtn" onclick="copyPre(this)">Kopieren</button><code>[[redirects]]
-  from = "/stooq/*"
-  to = "https://stooq.com/:splat"
-  status = 200   # 200 = Proxy, kein Redirect
-  force = true</code></pre>
-    Der Browser ruft <code>/stooq/q/d/l/?s=xauusd&i=d</code> auf der eigenen Domain auf — Netlify reicht
-    die Anfrage serverseitig an Stooq durch. Same-Origin, kein CORS-Problem.</div></details>
-  <details><summary><span class="stepnum">02</span> Deployen</summary><div class="body">
-    <code>macro-dashboard.zip</code> auf <b>app.netlify.com → Deploys</b> ziehen, oder per CLI:
-    <pre><button class="cbtn" onclick="copyPre(this)">Kopieren</button><code>netlify deploy --prod --dir .</code></pre></div></details>
-  <details><summary><span class="stepnum">03</span> Verifizieren</summary><div class="body">
-    Nach dem Deploy prüfen: <code>https://&lt;site&gt;/stooq/q/d/l/?s=xauusd&i=d</code> muss eine CSV liefern.
-    Danach das Dashboard öffnen — der Status-Balken verschwindet, sobald alle Quellen geladen sind.
-    Krypto funktioniert auch lokal (Coin Metrics & CoinGecko erlauben CORS), Metalle/Aktien nur gehostet.</div></details>
-  <details><summary><span class="stepnum">04</span> Ausbaustufe: tägliche Vorberechnung</summary><div class="body">
-    Die Senior-Variante: Ein GitHub-Actions-Cron rechnet täglich alle Metriken vor und committed ein
-    <code>data.json</code> (~20 KB) — das Frontend rendert nur noch, lädt in Millisekunden und ist unabhängig
-    von Live-Quellen. Gleiche Formeln, robusterer Betrieb.</div></details>
+  <p class="lead">Das Frontend rechnet nichts. Ein GitHub-Actions-Cron berechnet einmal täglich alle Metriken
+  und committet das Ergebnis — die Seite lädt nur noch eine fertige JSON-Datei und rendert sie.</p>
+  <details open><summary><span class="stepnum">01</span> Der tägliche Lauf</summary><div class="body">
+    Ein Workflow startet um <b>05:17 UTC</b> (nach US-Handelsschluss, vor dem EU-Morgen) und ruft den
+    Snapshot-Builder auf. Der holt alle Kurse, rechnet Risk- und Heat-Werte, schreibt
+    <code>public/snapshot.json</code> plus einen datierten Archiveintrag und committet beides als
+    <code>snapshot-bot</code> nach <code>main</code>. Manuell auslösen geht ebenfalls:
+    <pre><button class="cbtn copybtn" type="button">Kopieren</button><code>gh workflow run snapshot.yml --ref main</code></pre></div></details>
+  <details><summary><span class="stepnum">02</span> Warum das Frontend nichts berechnet</summary><div class="body">
+    Die Quellen für Metalle und Aktien erlauben kein CORS — im Browser bräuchte es dafür einen Proxy, und
+    jeder Besucher würde dieselben Zahlen neu ausrechnen. Im Node-Lauf entfällt beides: keine
+    CORS-Beschränkung, eine Berechnung für alle, und die Seite lädt in Millisekunden. Der geteilte Kern
+    unter <code>metrics-core/</code> ist bewusst plattformneutral, damit dieselben Formeln in Node laufen.</div></details>
+  <details><summary><span class="stepnum">03</span> Ausfalltoleranz</summary><div class="body">
+    Vier Schichten, damit ein kaputter Lauf nichts zerstört: Yahoo mit <b>Stooq als Fallback</b> und Retries;
+    eine gescheiterte Metrik landet in <code>failed[]</code> statt den Lauf abzubrechen; unter drei frisch
+    geladenen Metriken bricht der Lauf mit Exit 1 ab und schreibt <b>gar nichts</b>; fehlende Werte werden aus
+    dem Vortag übernommen und altern sichtbar über <code>staleDays</code>. Die Seite verliert nie Karten.</div></details>
+  <details><summary><span class="stepnum">04</span> Ausliefern</summary><div class="body">
+    Der Commit des Bots löst über den Netlify-Webhook einen Build aus (<code>npm ci &amp;&amp; npx ng build</code>,
+    Publish-Verzeichnis <code>dist/macro-ng/browser</code>). Unabhängig davon lädt das Frontend den Snapshot
+    zuerst direkt von <code>raw.githubusercontent.com</code> — die Zahlen bleiben also selbst dann aktuell,
+    wenn ein Deploy scheitert; die mitausgelieferte Kopie ist nur noch Fallback.</div></details>
 </section>
 
 <!-- ============ 06 LIMITATIONEN ============ -->
@@ -313,107 +202,6 @@ footer{grid-column:1/-1;border-top:1px solid var(--line);padding-top:20px;color:
 <footer>MACRO RISK DASHBOARD · HANDBUCH v1.0 · Formeln & Zonen identisch mit dem Live-Dashboard · Keine Anlageberatung</footer>
 </div>
 
-<script>
-/* ---------- Datenfluss: klickbare Knoten ---------- */
-const FLOWDOC={
- cm:{t:'Coin Metrics · Pflichtquelle Krypto',h:'Volle Tageshistorie für BTC (seit 2010) und ETH (seit 2015) als CSV aus dem öffentlichen GitHub-Repo. <b>Format:</b> Spalten <code>time</code>, <code>PriceUSD</code>, Fallback <code>ReferenceRateUSD</code>. <b>Risiko:</b> Repo kann laggen — CoinGecko schließt die Lücke.'},
- gecko:{t:'CoinGecko · Lückenschluss',h:'REST-API, letzte 365 Tage täglich, CORS-frei ohne Key. Überschreibt beim Merge ältere Coin-Metrics-Werte am selben Datum. <b>Fallback:</b> Fällt die API aus, rechnet das Dashboard nur mit Coin Metrics weiter (Warnung in der Konsole).'},
- stooq:{t:'Stooq · Metalle & Aktien',h:'Tageshistorie als CSV für XAU/XAG/XPD, ^NDQ, ^SPX und die Basket-Aktien. <b>Kein CORS</b> — deshalb läuft jeder Aufruf über die Netlify-Proxy-Regel <code>/stooq/*</code>. Lokal geöffnet schlägt dieser Pfad fehl; nur der Krypto-Tab lädt dann.'},
- compute:{t:'Compute · im Browser',h:'Merge & Sortierung per Map, rollierende SMA in O(n), Perzentile über sortiertes Array + binäre Suche. Gesamtaufwand für alle Assets: <b>~200 ms</b>. Formeln identisch mit den validierten Python/Node-Referenzrechnungen.'},
- ui:{t:'UI · Rendern',h:'Farbband-Rails mit historischen Ghost-Markern, Zonen-Chips (leuchten bei aktiver Zone), 6-Jahres-Sparklines, Preisniveau-Tabellen. Reines DOM-Rendering ohne Framework — bewusst „boring tech" für ein Ein-Personen-Tool.'}
-};
-document.querySelectorAll('.node').forEach(n=>{
-  const act=()=>{document.querySelectorAll('.node').forEach(x=>x.classList.toggle('on',x===n));
-    const d=FLOWDOC[n.dataset.k];
-    document.getElementById('flowinfo').innerHTML=`<span class="t">${d.t}</span>${d.h}`;};
-  n.addEventListener('click',act);
-  n.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();act();}});
-});
-
-/* ---------- Playground: echte BTC-Normierungskonstanten ---------- */
-const LO=-22.6972, HI=40.2596; // min/max von ln(P/SMA374)·t^0.395 über die BTC-Historie
-const fmt=n=>n.toLocaleString('de-DE');
-function playRisk(){
-  const p=+document.getElementById('s-p').value,
-        s=+document.getElementById('s-s').value,
-        d=+document.getElementById('s-d').value;
-  document.getElementById('o-p').textContent=fmt(p)+' $';
-  document.getElementById('o-s').textContent=fmt(s)+' $';
-  document.getElementById('o-d').textContent=fmt(d)+' Tage'+(Math.abs(d-5800)<100?' (heute)':'');
-  const r=Math.min(1,Math.max(0,(Math.log(p/s)*Math.pow(d,0.395)-LO)/(HI-LO)));
-  const out=document.getElementById('riskout'); out.textContent=r.toFixed(2);
-  out.style.color=r<0.2?'var(--teal)':r<0.5?'var(--amber)':'var(--red)';
-  const z=document.getElementById('riskzone');
-  const [txt,col]=r<0.05?['Kapitulation — max. Rate','var(--teal)']
-    :r<0.10?['Rate erhöhen','var(--teal)']
-    :r<0.20?['Basisrate-Zone','var(--teal)']
-    :r<0.50?['Neutral — halten','var(--amber)']
-    :r<0.75?['Erhöht — Gewinnmitnahmen prüfen','var(--amber)']
-    :['Top-Zone — historisch Verkaufsgebiet','var(--red)'];
-  z.textContent=txt; z.style.color=col; z.style.borderColor=col;
-}
-['s-p','s-s','s-d'].forEach(id=>document.getElementById(id).addEventListener('input',playRisk));
-playRisk();
-
-/* ---------- Zonen-Rail: draggbarer Marker ---------- */
-const ZONES={
- btc:v=>v<0.05?['<b>Kapitulation.</b> Historisches Bodenniveau (2015: 0,04 · 2018: 0,00 · 2022: 0,04). Maximale DCA-Rate — dieses Regime hielt nie länger als wenige Wochen.']
-   :v<0.10?['<b>Rate erhöhen.</b> Entspricht heute grob 53.000 $. Unterhalb dieser Schwelle waren Käufe in jeder bisherigen Zyklusphase profitabel, wenn man 2+ Jahre hielt.']
-   :v<0.20?['<b>Basisrate.</b> Aktuelle Zone (0,16). Historisch günstig, aber ohne Kapitulationssignal — gestaffelt kaufen, Pulver für tiefere Werte behalten.']
-   :v<0.50?['<b>Neutral.</b> Weder Edge auf der Kauf- noch Verkaufsseite. Bestehende Positionen laufen lassen.']
-   :['<b>Obere Zone.</b> Zum Vergleich: Das 2025er-ATH erreichte nur noch 0,48 — die Zyklusamplituden schrumpfen. Werte darüber wären ein neues Euphorie-Regime.'],
- eth:v=>v<0.05?['<b>Kapitulation.</b> ETH-Böden lagen bei 0,00 (2018) und 0,09 (2022). Maximale Rate — aber ETH trägt These-Risiko (Doppeltop 2021/2025, schwaches ETH/BTC).']
-   :v<0.10?['<b>Rate erhöhen.</b> Entspricht heute ~1.190 $, nahe dem 2022er-Bodenniveau. Historisch die Zone der stärksten Rebounds (+400 % nach 2022).']
-   :v<0.25?['<b>Kleine Tranchen.</b> Aktuelle Zone (0,22). Konservativer als bei BTC staffeln, solange ETH/BTC keinen Boden bestätigt.']
-   :v<0.50?['<b>Neutral.</b> Kein Edge. Beobachten, ob relative Stärke gegen BTC zurückkommt.']
-   :['<b>Obere Zone.</b> ETH-Tops: 0,88 (2018) · 0,75 (2021) · 0,71 (2025) — auch hier fallende Amplituden.'],
- heat:v=>v<0.15?['<b>Akkumulation.</b> Nur an '+Math.round(v*100)+' % aller Handelstage lag das Asset tiefer unter seinem 200-Tage-Trend. Das statistische „Ausgebombt"-Regime — bei Palladium aktuell der spannendste Kontraindikator.']
-   :v<0.85?['<b>Neutral.</b> Perzentil '+Math.round(v*100)+' % — die Trendabweichung ist unauffällig. Heat liefert hier keinen Edge; Entscheidung auf Ratio- oder Fundamentalebene treffen.']
-   :['<b>Überhitzt.</b> Stärkere Extension gab es nur an '+Math.round((1-v)*100)+' % aller Tage. Beim KI-Basket wäre das Blasen-Regime — kein Timing für Neueinstiege, Trailing-Stops sinnvoll.']
-};
-let zAsset='btc';
-const rail=document.getElementById('zrail'), handle=document.getElementById('zhandle');
-function setZ(v){
-  v=Math.min(1,Math.max(0,v));
-  handle.style.left=(v*100)+'%';
-  handle.setAttribute('aria-valuenow',v.toFixed(2));
-  document.getElementById('zval').textContent=v.toFixed(2);
-  document.getElementById('zverdict').innerHTML=ZONES[zAsset](v)[0];
-}
-function posFromEvent(e){
-  const r=rail.getBoundingClientRect();
-  const x=(e.touches?e.touches[0].clientX:e.clientX)-r.left;
-  return x/r.width;
-}
-let drag=false;
-handle.addEventListener('pointerdown',e=>{drag=true;handle.setPointerCapture(e.pointerId);});
-window.addEventListener('pointermove',e=>{if(drag)setZ(posFromEvent(e));});
-window.addEventListener('pointerup',()=>drag=false);
-rail.addEventListener('pointerdown',e=>{if(e.target!==handle)setZ(posFromEvent(e));});
-handle.addEventListener('keydown',e=>{
-  const cur=parseFloat(handle.getAttribute('aria-valuenow'));
-  if(e.key==='ArrowLeft')setZ(cur-0.01); if(e.key==='ArrowRight')setZ(cur+0.01);
-});
-document.querySelectorAll('[data-asset]').forEach(b=>b.addEventListener('click',()=>{
-  zAsset=b.dataset.asset;
-  document.querySelectorAll('[data-asset]').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));
-  setZ(parseFloat(handle.getAttribute('aria-valuenow')));
-}));
-setZ(0.16);
-
-/* ---------- Copy-Buttons ---------- */
-function copyPre(btn){
-  navigator.clipboard.writeText(btn.parentElement.querySelector('code').innerText)
-    .then(()=>{btn.textContent='Kopiert ✓';setTimeout(()=>btn.textContent='Kopieren',1600);});
-}
-
-/* ---------- Scroll-Spy ---------- */
-const links=[...document.querySelectorAll('#sidenav a')];
-const obs=new IntersectionObserver(es=>{
-  es.forEach(e=>{if(e.isIntersecting)
-    links.forEach(l=>l.classList.toggle('on',l.getAttribute('href')==='#'+e.target.id));});
-},{rootMargin:'-30% 0px -60% 0px'});
-document.querySelectorAll('main section').forEach(s=>obs.observe(s));
-</script>
+<script src="/docs.js" defer></script>
 </body>
 </html>

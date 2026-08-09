@@ -7,10 +7,10 @@ import { fmt } from '../../../metrics-core/math';
 export { fmt };
 export type { BearSnapshot, BubbleSnapshot, MetricSnapshot, RatioSnapshot, Snapshot };
 
-/** Optional: Raw-URL des GitHub-Repos eintragen, dann ist der Snapshot unabhängig vom
- *  letzten Netlify-Deploy immer tagesaktuell (z.B.
- *  'https://raw.githubusercontent.com/<user>/<repo>/main/public/snapshot.json'). */
-const SNAPSHOT_REMOTE = '';
+/** Primärquelle: Raw-URL des Repos. Der tägliche Lauf committet dorthin, also sind die
+ *  Daten auch dann aktuell, wenn ein Netlify-Build scheitert oder hängt. Die Kopie aus
+ *  dem Build-Paket bleibt Fallback — fällt GitHub aus, zeigt die Seite weiter Zahlen. */
+const SNAPSHOT_REMOTE = 'https://raw.githubusercontent.com/Jonesxxl/market-dashboard/main/public/snapshot.json';
 
 @Service()
 export class MarketDataService {

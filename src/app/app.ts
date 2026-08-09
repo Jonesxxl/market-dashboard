@@ -7,13 +7,17 @@ declare global {
 }
 
 /* ===== Routen ===== */
+/* `title` wird von der AppTitleStrategy (src/main.ts) um den Seitennamen ergänzt —
+   ohne das teilen sich alle Routen denselben Titel in Tab, Verlauf und Suchergebnis. */
 export const routes: Routes = [
-  { path: '', loadComponent: () => import('./pages/landing.component').then(m => m.LandingComponent) },
-  { path: 'krypto', loadComponent: () => import('./pages/crypto.component').then(m => m.CryptoComponent) },
-  { path: 'metalle', loadComponent: () => import('./pages/metals.component').then(m => m.MetalsComponent) },
-  { path: 'nasdaq-ki', loadComponent: () => import('./pages/ai.component').then(m => m.AiComponent) },
-  { path: 'waehrungen', loadComponent: () => import('./pages/fx.component').then(m => m.FxComponent) },
-  { path: 'generator', loadComponent: () => import('./pages/generator.component').then(m => m.GeneratorComponent) },
+  { path: '', title: '', loadComponent: () => import('./pages/landing.component').then(m => m.LandingComponent) },
+  { path: 'krypto', title: 'Krypto — Bitcoin & Ethereum Risk-Metrik', loadComponent: () => import('./pages/crypto.component').then(m => m.CryptoComponent) },
+  { path: 'metalle', title: 'Metalle — Gold, Silber & Palladium', loadComponent: () => import('./pages/metals.component').then(m => m.MetalsComponent) },
+  { path: 'nasdaq-ki', title: 'Nasdaq & KI — Blasen-Score', loadComponent: () => import('./pages/ai.component').then(m => m.AiComponent) },
+  { path: 'waehrungen', title: 'Währungen — Dollar-Index & Paare', loadComponent: () => import('./pages/fx.component').then(m => m.FxComponent) },
+  { path: 'generator', title: 'Sparplan- & Rebalancing-Generator', loadComponent: () => import('./pages/generator.component').then(m => m.GeneratorComponent) },
+  { path: 'impressum', title: 'Impressum', loadComponent: () => import('./pages/impressum.component').then(m => m.ImpressumComponent) },
+  { path: 'datenschutz', title: 'Datenschutz', loadComponent: () => import('./pages/datenschutz.component').then(m => m.DatenschutzComponent) },
   { path: '**', redirectTo: '' },
 ];
 
@@ -83,6 +87,14 @@ export const routes: Routes = [
         mittelt bis zu fünf Perzentile: Nasdaq-Trend, KI-Basket-Trend, Vorsprung des Baskets vor dem S&amp;P 500,
         Marktkonzentration (SPY/RSP) und Kredit-Risikoappetit (HYG/LQD). Datenquellen: Coin Metrics &amp; CoinGecko
         (Krypto), Yahoo Finance mit Stooq als Ersatz (Metalle, Aktien, Währungen). Keine Anlageberatung.
+
+        <nav class="flex gap-4 flex-wrap mt-5 font-mono text-[12px]" aria-label="Rechtliches">
+          <a routerLink="/impressum" class="text-muted hover:text-fg no-underline">Impressum</a>
+          <a routerLink="/datenschutz" class="text-muted hover:text-fg no-underline">Datenschutz</a>
+          <a href="/snapshot.json" class="text-muted hover:text-fg no-underline">Rohdaten (JSON)</a>
+          <a href="https://github.com/Jonesxxl/market-dashboard" target="_blank" rel="noopener"
+             class="text-muted hover:text-fg no-underline">Quellcode ↗</a>
+        </nav>
       </footer>
     </div>
   `,
