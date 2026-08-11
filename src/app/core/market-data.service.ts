@@ -43,7 +43,10 @@ export class MarketDataService {
   reload(): void { this.market.reload(); }
 
   private async fetchSnapshot(): Promise<Snapshot> {
-    const urls = SNAPSHOT_REMOTE ? [SNAPSHOT_REMOTE, '/snapshot.json'] : ['/snapshot.json'];
+    // Lokal hat der eigene Build Vorrang — sonst zeigt die Entwicklungsumgebung die
+    // Produktionsdaten von GitHub und ein frisch gebauter Snapshot bliebe unsichtbar.
+    const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+    const urls = SNAPSHOT_REMOTE && !local ? [SNAPSHOT_REMOTE, '/snapshot.json'] : ['/snapshot.json'];
     let lastErr: unknown = null;
     for (const url of urls) {
       try {

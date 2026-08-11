@@ -4,6 +4,7 @@
  *  Qualitäts-Gate VOR jedem Schreiben: ein kaputter Lauf fasst den letzten guten Stand nicht an. */
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { buildSnapshot } from '../metrics-core/snapshot';
+import { REGISTRY } from '../metrics-core/metrics';
 import { NODE_CTX } from '../metrics-core/sources';
 import { Snapshot } from '../metrics-core/types';
 
@@ -25,11 +26,16 @@ async function main(): Promise<void> {
     try { prev = JSON.parse(readFileSync('public/snapshot.json', 'utf8')) as Snapshot; }
     catch { prev = null; }
   }
-  let carried = 0;
+  let carried = 0, dropped = 0;
   if (prev) {
     const have = new Set(snap.metrics.map(m => m.id));
+    // Nur noch registrierte Metriken dürfen übernommen werden. Sonst würde eine aus der
+    // Registry entfernte oder umbenannte Metrik (z.B. eurusd → usdeur) für immer als
+    // stetig alternde Karte weiterleben, weil der Carry-over sie jeden Tag neu einsetzt.
+    const known = new Set(REGISTRY.map(d => d.id));
     for (const old of prev.metrics) {
       if (have.has(old.id)) continue;
+      if (!known.has(old.id)) { dropped++; continue; }
       old.current.staleDays = Math.max(0, Math.round((Date.now() - new Date(old.current.date).getTime()) / 864e5));
       snap.metrics.push(old);
       carried++;
@@ -47,6 +53,7 @@ async function main(): Promise<void> {
   for (const f of files.slice(0, Math.max(0, files.length - ARCHIVE_KEEP))) rmSync(`data/archive/${f}`);
 
   console.log(`Snapshot: ${fresh} frisch, ${carried} aus Vortag übernommen, ${(json.length / 1024).toFixed(0)} KB` +
+    (dropped ? ` · ${dropped} nicht mehr registriert und verworfen` : '') +
     (snap.failed.length ? ` · ausgefallen: ${snap.failed.join(', ')}` : ''));
 
   // Frischeprüfung: veraltete Kurse sind der häufigste stille Fehler — hier laut machen

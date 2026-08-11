@@ -13,14 +13,15 @@ interface Teaser {
   imports: [RouterLink],
   template: `
     <section class="py-10 md:py-16 border-b border-line mb-8">
-      <p class="font-mono text-[11.5px] tracking-[2.5px] uppercase text-lo mb-3.5">Marktlage auf einen Blick · täglich frisch</p>
+      <p class="font-mono text-[11.5px] tracking-[2.5px] uppercase text-lo mb-3.5">Marktlage auf einen Blick · täglich neu berechnet</p>
       <h2 class="text-3xl md:text-5xl font-bold leading-tight max-w-3xl">
-        Ein Maß für alle Märkte:<br><span class="text-lo">Wie extrem ist heute — gemessen an der eigenen Geschichte?</span>
+        Ein Maßstab für alle Märkte:<br><span class="text-lo">Wie außergewöhnlich ist der heutige Kurs?</span>
       </h2>
-      <p class="text-muted max-w-2xl mt-4 text-[15px]">
-        Dieses Dashboard beantwortet für Krypto, Edelmetalle, den Nasdaq und die großen Währungen dieselbe Frage:
-        Wie weit liegt der Kurs über oder unter seinem langfristigen Trend — und wie selten war das bisher?
-        Daraus entstehen vergleichbare Kauf- und Warnzonen statt Bauchgefühl.
+      <p class="text-muted max-w-2xl mt-5 text-[15px] leading-relaxed">
+        Für Krypto, Edelmetalle, den Nasdaq und die großen Währungen wird dieselbe Frage beantwortet: Wie weit
+        liegt der Kurs über oder unter seinem langfristigen Trend — und an wie vielen Tagen der Vergangenheit
+        war diese Abweichung noch größer? Weil jedes Asset nur an seiner eigenen Historie gemessen wird, sind
+        die Ergebnisse untereinander vergleichbar.
       </p>
     </section>
 
@@ -46,23 +47,24 @@ interface Teaser {
       }
     </div>
 
-    <div class="mt-4 bg-panel border border-line rounded-2xl p-6 flex items-center justify-between gap-4 flex-wrap">
-      <div>
-        <h3 class="text-fg font-bold text-lg mb-1">⚖ Sparplan- &amp; Rebalancing-Generator</h3>
-        <p class="text-muted text-[13px]">Sparrate oder Depot eingeben — ein festes Regelwerk neigt die Gewichte
-          entlang der aktuellen Signale. Läuft komplett im Browser, deine Zahlen verlassen das Gerät nie.</p>
+    <div class="mt-4 bg-panel border border-line rounded-2xl p-6 flex items-center justify-between gap-5 flex-wrap">
+      <div class="max-w-2xl">
+        <h3 class="text-fg font-bold text-lg mb-1.5">Sparplan- und Rebalancing-Generator</h3>
+        <p class="text-muted text-[13px] leading-relaxed">Sparrate oder Depotwert eingeben; ein festes Regelwerk
+          verschiebt die Gewichte entlang der aktuellen Signale. Die Berechnung läuft vollständig im Browser —
+          eingegebene Beträge werden nicht übertragen und nicht gespeichert.</p>
       </div>
-      <a routerLink="/generator"
-         class="bg-panel2 border border-line text-fg font-mono text-[12.5px] px-5 py-2.5 rounded-[9px] no-underline hover:border-lo">Ausprobieren →</a>
+      <a routerLink="/generator" class="btn btn-ghost">Generator öffnen →</a>
     </div>
 
-    <div class="mt-4 bg-panel border border-line rounded-2xl p-6 flex items-center justify-between gap-4 flex-wrap">
-      <div>
-        <h3 class="text-fg font-bold text-lg mb-1">Wie funktioniert das alles?</h3>
-        <p class="text-muted text-[13px]">Interaktives Handbuch: Formel-Spielwiese, Architektur, Signalzonen zum Ausprobieren — und die ehrlichen Grenzen der Methodik.</p>
+    <div class="mt-4 bg-panel border border-line rounded-2xl p-6 flex items-center justify-between gap-5 flex-wrap">
+      <div class="max-w-2xl">
+        <h3 class="text-fg font-bold text-lg mb-1.5">Methodik im Detail</h3>
+        <p class="text-muted text-[13px] leading-relaxed">Das technische Handbuch zeigt die Formeln zum
+          Durchrechnen, den Weg der Daten von der Quelle bis zur Karte, die Signalzonen zum Ausprobieren — und
+          die Grenzen des Verfahrens.</p>
       </div>
-      <a href="/docs.html" target="_blank" rel="noopener"
-         class="bg-panel2 border border-line text-fg font-mono text-[12.5px] px-5 py-2.5 rounded-[9px] no-underline hover:border-lo">Doku öffnen ↗</a>
+      <a href="/docs.html" target="_blank" rel="noopener" class="btn btn-ghost">Handbuch öffnen ↗</a>
     </div>
   `,
 })
@@ -73,31 +75,31 @@ export class LandingComponent {
     const btc = this.data.byId('btc-risk');
     const gold = this.data.byId('gold-heat');
     const bubble = this.data.bubble();
-    const eur = this.data.byId('eurusd');
+    const eur = this.data.byId('usdeur');
     const risk = btc ? btc.current.value : null;
     return [
       {
         route: '/krypto', title: 'Krypto',
-        desc: 'Zyklus-Risk-Metrik für Bitcoin und Ethereum, Preisniveaus je Risk-Zone und der direkte Bärenmarkt-Vergleich 2017/18 vs. 2025/26.',
+        desc: 'Zyklus-Risk für Bitcoin und Ethereum, die zugehörigen Kursniveaus je Zone und der direkte Vergleich der Bärenmärkte 2017/18 und 2025/26.',
         metric: 'BTC Risk', value: risk != null ? risk.toFixed(2) : null,
         color: risk != null ? (risk < 0.2 ? '#22C6B8' : risk < 0.5 ? '#F2B33D' : '#F0533F') : '#8A97AC',
       },
       {
-        route: '/metalle', title: 'Metalle',
-        desc: 'Gold, Silber und Palladium mit Heat-Perzentilen plus Gold/Silber- und Palladium/Gold-Ratio als Kontraindikatoren.',
+        route: '/metalle', title: 'Edelmetalle',
+        desc: 'Gold, Silber und Palladium als Heat-Perzentile, ergänzt um das Gold/Silber- und das Palladium/Gold-Verhältnis.',
         metric: 'Gold Heat', value: gold ? gold.current.value.toFixed(2) : null,
         color: '#E3C05A',
       },
       {
         route: '/nasdaq-ki', title: 'Nasdaq & KI',
-        desc: 'KI-Blasen-Score aus bis zu fünf Bausteinen: Trends, Marktdominanz, Konzentration und Kredit-Risikoappetit.',
+        desc: 'Der KI-Blasen-Score bündelt fünf Messgrößen: zwei Trends, den Vorsprung der KI-Werte, die Marktkonzentration und den Kredit-Risikoappetit.',
         metric: 'Blasen-Score', value: bubble ? bubble.score.toFixed(2) : null,
         color: bubble ? (bubble.score > 0.85 ? '#F0533F' : bubble.score > 0.6 ? '#F2B33D' : '#22C6B8') : '#8A97AC',
       },
       {
         route: '/waehrungen', title: 'Währungen',
-        desc: 'Dollar-Index, EUR/USD, USD/CHF, USD/CNY und USD/GHS — gedehnte Bewegungen als Makro-Frühindikatoren.',
-        metric: 'EUR/USD Heat', value: eur ? eur.current.value.toFixed(2) : null,
+        desc: 'Dollar-Index sowie USD/EUR, USD/CHF, USD/CNY und USD/GHS — durchgehend aus Dollar-Sicht, weit gedehnte Bewegungen als Makro-Frühindikator.',
+        metric: 'USD/EUR Heat', value: eur ? eur.current.value.toFixed(2) : null,
         color: '#F2B33D',
       },
     ];

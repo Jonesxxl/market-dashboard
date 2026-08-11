@@ -1,0 +1,39 @@
+# Macro Risk Dashboard
+
+> Bewertet Kryptowährungen, Edelmetalle, den Nasdaq 100 und die großen Währungen danach, wie weit ihr aktueller Kurs von ihrem eigenen langfristigen Trend abweicht — und an wie vielen Handelstagen der Vergangenheit diese Abweichung größer war. Jedes Asset wird ausschließlich mit seiner eigenen Historie verglichen, nie mit einem anderen. Alle Werte werden einmal täglich vorberechnet und unverändert ausgeliefert. Sprache: Deutsch. Keine Anlageberatung.
+
+## Die beiden Kennzahlen
+
+**Heat** (Edelmetalle, Aktien, Währungen, Körbe): das historische Perzentil von `ln(Kurs / SMA200)`. Ein Wert von 0,10 bedeutet, dass der Kurs nur an 10 % aller Handelstage der verfügbaren Historie noch weiter unter seinem 200-Tage-Durchschnitt lag als heute. 0 ist der historisch tiefste, 1 der historisch höchste gemessene Abstand zum Trend. Unter 0,15 gilt als Kaufzone, über 0,85 als Warnzone.
+
+**Risk** (nur Bitcoin und Ethereum): min-max-normiertes `ln(Kurs / SMA374) × Tagesindex^0.395`. Die Zeitgewichtung gleicht aus, dass die Ausschläge von Zyklus zu Zyklus kleiner werden. 0 entspricht dem Niveau historischer Zyklusböden, 1 dem Niveau historischer Zyklustops. Die Normierungskonstanten sind seit dem 19.07.2026 eingefroren, damit ein neues Extrem die Historie nicht rückwirkend umskaliert.
+
+**KI-Blasen-Score**: Mittelwert aus bis zu fünf Heat-Perzentilen — Nasdaq-Trend, Trend des KI-Baskets, Vorsprung dieses Baskets vor dem S&P 500, Marktkonzentration (SPY/RSP) und Kredit-Risikoappetit (HYG/LQD).
+
+## Wichtige Konventionen
+
+- **Währungen notieren durchgehend den US-Dollar als Basiswährung.** Eine steigende Kurve bedeutet ausnahmslos einen stärkeren Dollar. Das sonst übliche EUR/USD wird deshalb als USD/EUR dargestellt.
+- **Der Digital-Asset-Basket ist ein gleichgewichteter Index ohne eigenen Marktpreis.** Sein Dollar-Verlauf zeigt den Wert von 100 $, die am ersten Tag der gemeinsamen Historie gleichgewichtet auf die Korbmitglieder verteilt wurden.
+- Alle Zahlen sind statistische Auswertungen der Vergangenheit. Sie enthalten keine Prognose und keine Empfehlung.
+
+## Seiten
+
+- [Startseite](https://chipper-cucurucho-5d0a49.netlify.app/): Überblick mit je einer Kennzahl pro Anlageklasse.
+- [Krypto](https://chipper-cucurucho-5d0a49.netlify.app/krypto): Risk-Werte für Bitcoin und Ethereum, Kursniveaus je Risk-Zone, Digital-Asset-Basket, Vergleich der Bärenmärkte 2017/18 und 2025/26.
+- [Edelmetalle](https://chipper-cucurucho-5d0a49.netlify.app/metalle): Gold, Silber, Palladium sowie Gold/Silber- und Palladium/Gold-Verhältnis.
+- [Nasdaq und KI](https://chipper-cucurucho-5d0a49.netlify.app/nasdaq-ki): Nasdaq-100-Heat, KI-Basket, Marktkonzentration, Kredit-Risikoappetit, KI-Blasen-Score.
+- [Währungen](https://chipper-cucurucho-5d0a49.netlify.app/waehrungen): Dollar-Index, USD/EUR, USD/CHF, USD/CNY, USD/GHS.
+- [Generator](https://chipper-cucurucho-5d0a49.netlify.app/generator): leitet aus den aktuellen Signalen eine Gewichtung für Sparrate oder Depot ab. Rechnet vollständig im Browser.
+- [Technisches Handbuch](https://chipper-cucurucho-5d0a49.netlify.app/docs.html): Formeln, Datenfluss, Signalzonen und die Grenzen des Verfahrens.
+
+## Daten
+
+- [snapshot.json](https://chipper-cucurucho-5d0a49.netlify.app/snapshot.json): sämtliche berechneten Werte als JSON, täglich neu. Enthält pro Metrik den aktuellen Wert, Kurs, gleitenden Durchschnitt, Monatsreihen für Chart und Kurs, 52-Wochen-Spanne und eine deutschsprachige Deutung. Das Feld `failed` listet Metriken, die im letzten Lauf nicht aktualisiert werden konnten; `staleDays` gibt je Metrik das Alter des Kurses in Tagen an.
+
+## Quellen
+
+Coin Metrics und CoinGecko für Kryptowährungen; Yahoo Finance als Hauptquelle und Stooq als Ersatzquelle für Edelmetalle, Aktien und Währungen.
+
+## Grenzen
+
+Perzentile beschreiben, wie ungewöhnlich ein Zustand gegenüber der eigenen Vergangenheit ist — nicht, was als Nächstes passiert. Ein Extremwert kann lange extrem bleiben. Assets mit kurzer Historie liefern instabilere Perzentile; Korbmitglieder unter etwa vier Jahren Historie werden deshalb ausgeschlossen. Strukturbrüche (geänderte Geldpolitik, neue Marktteilnehmer) machen alte Vergleichswerte weniger aussagekräftig.

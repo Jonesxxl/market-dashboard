@@ -46,10 +46,15 @@ export class ChartTipDirective {
     cl.setAttribute('y1', String(HT)); cl.setAttribute('y2', String(HH - HB));
     cl.setAttribute('x1', String(xi)); cl.setAttribute('x2', String(xi)); cl.setAttribute('opacity', '.6');
     dot!.setAttribute('cx', String(xi)); dot!.setAttribute('cy', String(yi)); dot!.setAttribute('opacity', '1');
-    const extra = d.p && d.p[i] != null ? ` · ${fmtTip(d.p[i])}${d.u ? ' ' + d.u : ''}` : '';
-    const vTxt = d.f === 'pct' ? Math.round(d.v[i] * 100) + ' %' : d.v[i].toFixed(2);
+    const pTxt = d.p && d.p[i] != null ? `${fmtTip(d.p[i])}${d.u ? ' ' + d.u : ''}` : '';
     const tip = tipEl();
-    tip.textContent = `${d.m[i]} · ${d.l} ${vTxt}${extra}`;
+    if (d.f === 'none') {
+      // Preis-Chart: v trägt nur die Position auf der eigenen Skala, angezeigt wird p.
+      tip.textContent = `${d.m[i]} · ${d.l} ${pTxt}`;
+    } else {
+      const vTxt = d.f === 'pct' ? Math.round(d.v[i] * 100) + ' %' : d.v[i].toFixed(2);
+      tip.textContent = `${d.m[i]} · ${d.l} ${vTxt}${pTxt ? ' · ' + pTxt : ''}`;
+    }
     tip.style.display = 'block';
     tip.style.left = Math.min(window.innerWidth - tip.offsetWidth - 10, e.clientX + 14) + 'px';
     tip.style.top = Math.max(6, e.clientY - 36) + 'px';

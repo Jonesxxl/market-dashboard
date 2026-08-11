@@ -1,8 +1,11 @@
+import { fmt } from '../../../metrics-core/math';
 import { BearCycle } from '../../../metrics-core/types';
 
 export interface TipData {
   m: string[]; v: number[]; p: number[] | null; l: string; u: string;
-  f?: 'pct'; s?: number; hh?: number; ht?: number; hb?: number;
+  /** 'pct' zeigt v als Prozent, 'none' blendet v aus (dann trägt p den Wert). */
+  f?: 'pct' | 'none';
+  s?: number; hh?: number; ht?: number; hb?: number;
 }
 
 /** Verlaufschart (monatlich, mit Achsenskala, Schwellenlinien, Endwert). */
@@ -47,6 +50,65 @@ export function sparklineSvg(
   const tip: TipData = {
     m: months, v: pts.map(v => +v.toFixed(3)),
     p: extra ? ex.map(v => +v.toFixed(2)) : null, l: label, u: unit,
+  };
+  return { svg, tip };
+}
+
+/** Kursverlauf in Originalwährung. Anders als der Heat-Chart hat er keine feste 0…1-Achse,
+ *  sondern skaliert sich selbst — bei mehr als einer Größenordnung Spanne logarithmisch,
+ *  weil ein Korb, der sich verzehnfacht hat, linear nur noch als flache Linie am Boden läge. */
+export function priceSparklineSvg(
+  months: string[], prices: number[], color: string,
+  years = 6, label = 'Kurs', unit = '$', dec = 0,
+): { svg: string; tip: TipData } | null {
+  const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - years);
+  const cut = cutoff.toISOString().slice(0, 7);
+  const pts: number[] = []; const ms: string[] = [];
+  for (let i = 0; i < months.length; i++) {
+    const p = prices[i];
+    // series.months liefert volle Datumsangaben (2020-10-01). Erst auf YYYY-MM kürzen,
+    // sonst endet jeder Eintrag auf '-01' und die Jahresmarke stünde an jedem Monat.
+    const ym = months[i].slice(0, 7);
+    if (ym < cut || p == null || !isFinite(p) || p <= 0) continue;
+    pts.push(p); ms.push(ym);
+  }
+  if (pts.length < 2) return null;
+
+  const lo = Math.min(...pts), hi = Math.max(...pts);
+  const log = hi / lo > 8;
+  const tr = (v: number) => (log ? Math.log(v) : v);
+  const tLo = tr(lo), tHi = tr(hi);
+  const span = tHi - tLo || 1;
+  // 4 % Luft oben und unten, damit Hoch- und Tiefpunkt nicht am Rahmen kleben
+  const norm = (v: number) => 0.04 + 0.92 * ((tr(v) - tLo) / span);
+
+  const W = 460, H = 118, L = 46, R = 14, T = 10, B = 20;
+  const x = (i: number) => L + (W - L - R) * i / (pts.length - 1);
+  const y = (v: number) => T + (H - T - B) * (1 - norm(v));
+
+  let g = '';
+  const mid = log ? Math.sqrt(lo * hi) : (lo + hi) / 2;
+  for (const v of [lo, mid, hi]) {
+    g += `<line x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="#1D2A42" stroke-width="1"/>
+        <text x="${L - 5}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end">${fmt(v, dec)}</text>`;
+  }
+  ms.forEach((m, i) => {
+    if (m.endsWith('-01'))
+      g += `<line x1="${x(i).toFixed(1)}" x2="${x(i).toFixed(1)}" y1="${T}" y2="${H - B}" stroke="#1D2A42" opacity=".6"/>
+        <text x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="middle">${m.slice(0, 4)}</text>`;
+  });
+
+  const d = pts.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const lx = x(pts.length - 1), ly = y(pts[pts.length - 1]);
+  g += `<path d="${d}" fill="none" stroke="${color}" stroke-width="1.8"/>
+      <circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="3.2" fill="${color}"/>
+      <text x="${Math.min(lx + 5, W - R)}" y="${ly < T + 14 ? ly + 14 : ly - 6}" text-anchor="end" style="fill:${color};font-weight:600">${fmt(pts[pts.length - 1], dec)}</text>
+      <text x="${W - R}" y="${T + 2}" text-anchor="end">${label} · ${years} Jahre${log ? ' · log. Skala' : ''}</text>`;
+
+  const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" role="img" aria-label="${label}-Verlauf, letzte ${years} Jahre">${g}</svg>`;
+  const tip: TipData = {
+    m: ms, v: pts.map(norm), p: pts.map(v => +v.toFixed(dec)),
+    l: label, u: unit, f: 'none',
   };
   return { svg, tip };
 }

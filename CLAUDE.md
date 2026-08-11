@@ -42,6 +42,8 @@ GitHub Action (cron 05:17 UTC + workflow_dispatch)
 
 **Die Daten hängen bewusst nicht am Deploy.** `SNAPSHOT_REMOTE` in `src/app/core/market-data.service.ts` zeigt auf die Raw-URL des Repos; die mitgebaute `/snapshot.json` ist nur noch Fallback. Scheitert ein Netlify-Build, bleiben die Zahlen trotzdem aktuell. Wer die Raw-URL ändert, muss `connect-src` in der CSP (`netlify.toml`) mitziehen — sonst blockiert der Browser den Abruf und die Seite fällt still auf die Deploy-Kopie zurück.
 
+**Auf localhost gilt die lokale Datei.** Sonst zeigt die Entwicklungsumgebung die Produktionsdaten von GitHub, und ein frisch gebauter Snapshot bliebe unsichtbar — ein Effekt, der beim Testen von Metrik-Änderungen sehr verlässlich in die Irre führt.
+
 ### metrics-core/ — geteilter, plattformneutraler Kern
 
 Läuft in Node **und** im Browser, deshalb keine Node-Imports darin. `FetchContext` abstrahiert nur die Basis-URLs (Node: direkte URLs; Browser wäre über Proxy-Pfade gedacht, ist aktuell aber nicht verdrahtet — es gibt keine Proxy-Config in `angular.json`).
@@ -56,6 +58,14 @@ Läuft in Node **und** im Browser, deshalb keine Node-Imports darin. `FetchConte
 | `allocation.ts` | Regelwerk hinter der Generator-Seite. |
 
 **Neue Metrik hinzufügen = ein Eintrag in `REGISTRY` in `metrics.ts`.** Snapshot-Builder, Frontend und Generator iterieren darüber und sehen sie automatisch. Eine `MetricDefinition` liefert `fetch`, `compute`, `interpret` und optional `extra`.
+
+**Metriken umbenennen oder entfernen ist gefahrlos**, weil `build-snapshot.ts` nur noch Metriken aus dem Vortag übernimmt, deren ID weiterhin in `REGISTRY` steht. Ohne diesen Filter würde eine gelöschte Metrik über den Carry-over täglich neu eingesetzt und als immer älter werdende Karte weiterleben.
+
+### Zwei Konventionen, die man kennen muss
+
+**Währungen notieren durchgehend den Dollar als Basiswährung** — eine steigende Kurve heißt ausnahmslos „stärkerer Dollar". Yahoo und Stooq liefern EUR/USD in der Gegenrichtung, deshalb hat `fxDef` einen `invert`-Parameter, der die Reihe kehrwertet (`usdeur`). Das ist kein Anzeigetrick: Der Heat-Wert wird auf der invertierten Reihe neu berechnet, denn `ln(1/P ÷ SMA200(1/P))` ist nicht das negierte `ln(P ÷ SMA200(P))`.
+
+**Körbe skalieren ihren Index auf 100 $.** `dai-basket-heat` ist ein gleichgewichteter Index ohne eigenen Marktpreis; `fetch` multipliziert die auf 1 normierte Reihe mit 100, damit ein lesbarer Dollar-Verlauf entsteht. Der Heat-Wert ändert sich dadurch nicht, weil `ln(kP / kSMA) = ln(P / SMA)`. Wer die Skalierung anfasst, ändert also nur die Anzeige — aber `stats` (52-Wochen-Spanne, Abstand zum Höchststand) hängt mit dran. Der Kurschart wird über `extra.priceChart` aktiviert, der erklärende Text darunter über `extra.priceNote`. Achtung: `r.dates[0]` ist dort **nicht** das Normierungsdatum, sondern liegt 200 Handelstage später — der SMA200 braucht diesen Vorlauf.
 
 ### Zwei Metrik-Arten, beide auf 0…1 normiert
 
@@ -86,6 +96,7 @@ Angular 22 in moderner Form — beim Erweitern denselben Stil halten:
 - Signal Forms (`@angular/forms/signals`, `FormField`) — siehe `generator.component.ts`. Kein `ReactiveFormsModule`.
 - Built-in Control Flow `@if` / `@for`, keine `*ngIf` / `*ngFor`.
 - Inline-Templates mit Tailwind-Klassen; Farben und Abstände aus `tailwind.config.js`.
+- **Bedienelemente nutzen die `.btn`-Klassen aus `src/styles.css`** (`@layer components`), nicht handgeschriebene Utility-Ketten: `.btn` plus `.btn-ghost` (Standard), `.btn-primary` (getroffene Wahl), `.btn-sel` (nachrangig ausgewählt), `.btn-sm` (dichte Gruppen), `.btn-on` (aktive Route via `routerLinkActive`). `.btn-on` und `.btn-sel` müssen in der Datei **nach** `.btn-ghost` stehen, sonst gewinnt dessen `:hover`-Regel bei gleicher Spezifität. Der `focus-visible`-Ring hängt an `.btn` — auf dunklem Grund wäre Tastaturnavigation sonst unsichtbar.
 - Alle Seiten sind `loadComponent`-lazy; Routen stehen in `src/app/app.ts`, nicht in einer eigenen Routes-Datei. Jede Route trägt ein `title`; `AppTitleStrategy` (`src/app/core/title-strategy.ts`) hängt den Seitennamen an.
 - **Keine exportierten Klassen in `src/main.ts`.** Eine dort exportierte `@Injectable`-Klasse zwingt den Builder, das Hauptbundle in einen 55-Byte-Stub plus Lazy-Chunk zu zerlegen — ein zusätzlicher Roundtrip vor dem ersten Rendern. Deshalb liegt die TitleStrategy in einer eigenen Datei.
 
@@ -111,6 +122,12 @@ Immutable-Caching gilt nur für gehashte Artefakte (`/main-*.js`, `/chunk-*.js`,
 ### Snapshot-Workflow
 
 Braucht `permissions: contents: write` und pusht als `snapshot-bot` direkt auf `main`; jeder erfolgreiche Lauf löst einen Netlify-Build aus. Der Job installiert per `npm ci` (tsx kommt aus dem Lockfile, nicht per `npx -y`), prüft mit `npm run typecheck` die Typen, bevor er Daten anfasst, und rebased vor dem Push in drei Versuchen. `concurrency: snapshot` verhindert, dass zwei Läufe sich überholen.
+
+### SEO, auch für Sprachmodelle
+
+`public/llms.txt` fasst Methodik, Konventionen, Datenquellen und Grenzen in Textform zusammen (Format nach llmstxt.org), `public/robots.txt` gibt die gängigen KI-Crawler ausdrücklich frei. In `src/index.html` steht ein JSON-LD-Block mit `WebSite`, `Dataset` (zeigt auf `snapshot.json`) und `FAQPage`. **Der ld+json-Block ist ein Datenblock, kein ausführbares Skript — die strikte `script-src`-Direktive greift dort nicht.**
+
+Titel, Meta-Beschreibung, OG-Tags und Canonical setzt `AppTitleStrategy` pro Route aus `title` und `data.description` in `src/app/app.ts`. Inhaltliche Änderungen an einer Metrik-Konvention gehören an vier Stellen nachgezogen: Registry, Seitentext, `llms.txt` und der FAQ-Block in `index.html`.
 
 ### Sonstiges
 

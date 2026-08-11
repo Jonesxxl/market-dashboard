@@ -7,17 +7,49 @@ declare global {
 }
 
 /* ===== Routen ===== */
-/* `title` wird von der AppTitleStrategy (src/main.ts) um den Seitennamen ergänzt —
-   ohne das teilen sich alle Routen denselben Titel in Tab, Verlauf und Suchergebnis. */
+/* `title` und `data.description` werden von der AppTitleStrategy (src/app/core/title-strategy.ts)
+   zu Titel, Meta-Beschreibung, OG-Tags und Canonical verarbeitet — ohne das teilen sich alle
+   Routen denselben Eintrag in Tab, Suchergebnis und Link-Vorschau. */
 export const routes: Routes = [
-  { path: '', title: '', loadComponent: () => import('./pages/landing.component').then(m => m.LandingComponent) },
-  { path: 'krypto', title: 'Krypto — Bitcoin & Ethereum Risk-Metrik', loadComponent: () => import('./pages/crypto.component').then(m => m.CryptoComponent) },
-  { path: 'metalle', title: 'Metalle — Gold, Silber & Palladium', loadComponent: () => import('./pages/metals.component').then(m => m.MetalsComponent) },
-  { path: 'nasdaq-ki', title: 'Nasdaq & KI — Blasen-Score', loadComponent: () => import('./pages/ai.component').then(m => m.AiComponent) },
-  { path: 'waehrungen', title: 'Währungen — Dollar-Index & Paare', loadComponent: () => import('./pages/fx.component').then(m => m.FxComponent) },
-  { path: 'generator', title: 'Sparplan- & Rebalancing-Generator', loadComponent: () => import('./pages/generator.component').then(m => m.GeneratorComponent) },
-  { path: 'impressum', title: 'Impressum', loadComponent: () => import('./pages/impressum.component').then(m => m.ImpressumComponent) },
-  { path: 'datenschutz', title: 'Datenschutz', loadComponent: () => import('./pages/datenschutz.component').then(m => m.DatenschutzComponent) },
+  {
+    path: '', title: '',
+    loadComponent: () => import('./pages/landing.component').then(m => m.LandingComponent),
+  },
+  {
+    path: 'krypto', title: 'Krypto — Risk-Metrik für Bitcoin und Ethereum',
+    data: { description: 'Zyklus-Risk für Bitcoin und Ethereum: 0 entspricht dem Niveau historischer Böden, 1 dem historischer Tops. Dazu Kursniveaus je Risk-Zone, der Digital-Asset-Basket und der Vergleich der Bärenmärkte 2017/18 und 2025/26.' },
+    loadComponent: () => import('./pages/crypto.component').then(m => m.CryptoComponent),
+  },
+  {
+    path: 'metalle', title: 'Edelmetalle — Gold, Silber und Palladium',
+    data: { description: 'Heat-Perzentile für Gold, Silber und Palladium: wie weit der Kurs von seinem 200-Tage-Durchschnitt abweicht und wie selten das historisch war. Dazu Gold/Silber- und Palladium/Gold-Verhältnis.' },
+    loadComponent: () => import('./pages/metals.component').then(m => m.MetalsComponent),
+  },
+  {
+    path: 'nasdaq-ki', title: 'Nasdaq und KI — Blasen-Score',
+    data: { description: 'Der KI-Blasen-Score bündelt fünf Messgrößen: Nasdaq-Trend, Trend des KI-Baskets, dessen Vorsprung vor dem S&P 500, die Marktkonzentration (SPY/RSP) und den Kredit-Risikoappetit (HYG/LQD).' },
+    loadComponent: () => import('./pages/ai.component').then(m => m.AiComponent),
+  },
+  {
+    path: 'waehrungen', title: 'Währungen — Dollar-Index und Paare',
+    data: { description: 'Dollar-Index, USD/EUR, USD/CHF, USD/CNY und USD/GHS — durchgehend mit dem Dollar als Basiswährung, eine steigende Kurve bedeutet also immer einen stärkeren Dollar. Extreme markieren gedehnte Bewegungen.' },
+    loadComponent: () => import('./pages/fx.component').then(m => m.FxComponent),
+  },
+  {
+    path: 'generator', title: 'Sparplan- und Rebalancing-Generator',
+    data: { description: 'Leitet aus den aktuellen Signalen eine Gewichtung für Sparrate oder Depot ab. Die Berechnung läuft vollständig im Browser — eingegebene Beträge werden nicht übertragen und nicht gespeichert.' },
+    loadComponent: () => import('./pages/generator.component').then(m => m.GeneratorComponent),
+  },
+  {
+    path: 'impressum', title: 'Impressum',
+    data: { description: 'Anbieterkennzeichnung nach § 5 DDG sowie Hinweise zu Haftung und Inhalt des Macro Risk Dashboards.' },
+    loadComponent: () => import('./pages/impressum.component').then(m => m.ImpressumComponent),
+  },
+  {
+    path: 'datenschutz', title: 'Datenschutz',
+    data: { description: 'Diese Seite setzt keine Cookies, nutzt keinen LocalStorage und enthält keine Formulare. Welche Daten beim Aufruf trotzdem verarbeitet werden, steht hier.' },
+    loadComponent: () => import('./pages/datenschutz.component').then(m => m.DatenschutzComponent),
+  },
   { path: '**', redirectTo: '' },
 ];
 
@@ -28,18 +60,25 @@ export const routes: Routes = [
   imports: [RouterOutlet, RouterLink, RouterLinkActive],
   template: `
     <div class="max-w-[1100px] mx-auto px-5 pb-16 pt-7">
-      <header class="flex justify-between items-end gap-4 flex-wrap mb-5">
-        <a routerLink="/" class="no-underline">
+      <header class="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between mb-6">
+        <a routerLink="/" class="no-underline max-w-2xl rounded-[10px]">
           <h1 class="text-[22px] font-bold text-fg">Macro Risk Dashboard</h1>
-          <p class="text-xs text-muted mt-1">Wie günstig oder teuer sind Bitcoin, Ethereum, Edelmetalle, Nasdaq
-            und die großen Währungen — gemessen an ihrer eigenen Geschichte? Täglich neu berechnet.</p>
+          <p class="text-xs text-muted mt-1.5 leading-relaxed">Bewertet Krypto, Edelmetalle, den Nasdaq und die
+            großen Währungen danach, wie weit sie von ihrem eigenen Langfristtrend abweichen — und wie selten
+            eine solche Abweichung historisch war.</p>
         </a>
-        <div class="text-right font-mono text-xs text-muted">
-          <div>{{ stamp() }}</div>
-          <button type="button" (click)="reload()" [disabled]="data.loading()"
-            class="mt-1.5 bg-panel border border-line text-fg font-mono text-xs px-3.5 py-1.5 rounded-lg hover:border-muted disabled:opacity-50"
-            aria-label="Neu laden">
-            {{ data.loading() ? 'Lädt …' : 'Neu laden' }}
+        <!-- Eigener Block statt schrumpfendem Flex-Item: links auf Mobil, rechts ab sm.
+             Vorher richtete text-right den Knopf nur an der Breite des Zeitstempels aus. -->
+        <div class="flex flex-col items-start gap-2.5 shrink-0 sm:items-end">
+          <span class="font-mono text-xs text-muted">{{ stamp() }}</span>
+          <button type="button" class="btn btn-ghost" (click)="reload()" [disabled]="data.loading()">
+            @if (data.loading()) {
+              <span class="inline-block w-3 h-3 rounded-full border-2 border-muted border-t-transparent animate-spin"
+                    aria-hidden="true"></span>
+              Aktualisiert …
+            } @else {
+              Neu laden
+            }
           </button>
         </div>
       </header>
@@ -47,9 +86,9 @@ export const routes: Routes = [
       @if (data.isBootstrap()) {
         <div class="font-mono text-[13px] px-4 py-3.5 border border-dashed border-mid rounded-xl mb-5 text-mid"
              role="status">
-          <b>Demo-Daten aus dem Build-Paket</b> (Stand {{ bootstrapDate() }}) — der tägliche Berechnungslauf hat noch
-          nie erfolgreich geschrieben. Sobald die GitHub-Action „Täglicher Metrik-Snapshot" einmal durchläuft und
-          deployt wird, ersetzt sie diese Datei durch echte Tageskurse.
+          <b>Beispieldaten aus dem Build-Paket</b> (Stand {{ bootstrapDate() }}) — der tägliche Berechnungslauf
+          hat bislang kein Ergebnis geschrieben. Die gezeigten Werte sind daher nicht aktuell und dienen nur der
+          Darstellung. Mit dem ersten erfolgreichen Lauf werden sie durch echte Tageskurse ersetzt.
         </div>
       } @else if (statusText(); as st) {
         <div class="font-mono text-[13px] px-4 py-3.5 border border-dashed rounded-xl mb-5"
@@ -58,42 +97,55 @@ export const routes: Routes = [
              role="status" aria-live="polite">{{ st }}</div>
       }
 
-      <nav class="flex gap-2 mb-5 flex-wrap items-center" aria-label="Hauptnavigation">
-        <a routerLink="/" routerLinkActive="!text-fg !border-muted !bg-panel" [routerLinkActiveOptions]="{ exact: true }"
-           class="bg-panel2 border border-line text-muted font-mono text-[12.5px] px-4 py-2 rounded-[9px] no-underline">Start</a>
-        <a routerLink="/krypto" routerLinkActive="!text-fg !border-muted !bg-panel"
-           class="bg-panel2 border border-line text-muted font-mono text-[12.5px] px-4 py-2 rounded-[9px] no-underline">Krypto</a>
-        <a routerLink="/metalle" routerLinkActive="!text-fg !border-muted !bg-panel"
-           class="bg-panel2 border border-line text-muted font-mono text-[12.5px] px-4 py-2 rounded-[9px] no-underline">Metalle</a>
-        <a routerLink="/nasdaq-ki" routerLinkActive="!text-fg !border-muted !bg-panel"
-           class="bg-panel2 border border-line text-muted font-mono text-[12.5px] px-4 py-2 rounded-[9px] no-underline">Nasdaq &amp; KI</a>
-        <a routerLink="/waehrungen" routerLinkActive="!text-fg !border-muted !bg-panel"
-           class="bg-panel2 border border-line text-muted font-mono text-[12.5px] px-4 py-2 rounded-[9px] no-underline">Währungen</a>
-        <a routerLink="/generator" routerLinkActive="!text-fg !border-muted !bg-panel"
-           class="bg-panel2 border border-line text-muted font-mono text-[12.5px] px-4 py-2 rounded-[9px] no-underline">Generator</a>
-        <a href="/docs.html" target="_blank" rel="noopener"
-           class="ml-auto bg-panel2 border border-line text-muted font-mono text-[12.5px] px-4 py-2 rounded-[9px] no-underline">Doku ↗</a>
+      <nav class="flex gap-2 mb-6 flex-wrap items-center" aria-label="Hauptnavigation">
+        <a routerLink="/" routerLinkActive="btn-on" [routerLinkActiveOptions]="{ exact: true }"
+           class="btn btn-ghost">Start</a>
+        <a routerLink="/krypto" routerLinkActive="btn-on" class="btn btn-ghost">Krypto</a>
+        <a routerLink="/metalle" routerLinkActive="btn-on" class="btn btn-ghost">Metalle</a>
+        <a routerLink="/nasdaq-ki" routerLinkActive="btn-on" class="btn btn-ghost">Nasdaq &amp; KI</a>
+        <a routerLink="/waehrungen" routerLinkActive="btn-on" class="btn btn-ghost">Währungen</a>
+        <a routerLink="/generator" routerLinkActive="btn-on" class="btn btn-ghost">Generator</a>
+        <a href="/docs.html" target="_blank" rel="noopener" class="btn btn-ghost ml-auto">Handbuch ↗</a>
       </nav>
 
       <main><router-outlet/></main>
 
-      <footer class="text-xs text-muted leading-relaxed mt-8 border-t border-line pt-5">
-        <b class="text-fg">Wie wird gerechnet?</b> Jedes Asset wird nur mit sich selbst verglichen: Wie weit liegt
-        der Kurs über oder unter seinem eigenen langfristigen Durchschnitt — und wie oft kam so eine Abweichung in
-        der gesamten Historie vor? Bei Krypto (Zyklus-Risk-Metrik: 374-Tage-Schnitt, zeitgewichtet, damit die
-        schrumpfenden Zyklusamplituden vergleichbar bleiben) bedeutet 0 „Niveau historischer Böden" und 1 „Niveau
-        historischer Tops". Bei Metallen, Aktien und Währungen (Heat, 200-Tage-Schnitt) ist der Wert ein Perzentil:
-        Heat 0,10 heißt, nur an 10&nbsp;% aller Tage war das Asset noch günstiger zu seinem Trend. Der KI-Blasen-Score
-        mittelt bis zu fünf Perzentile: Nasdaq-Trend, KI-Basket-Trend, Vorsprung des Baskets vor dem S&amp;P 500,
-        Marktkonzentration (SPY/RSP) und Kredit-Risikoappetit (HYG/LQD). Datenquellen: Coin Metrics &amp; CoinGecko
-        (Krypto), Yahoo Finance mit Stooq als Ersatz (Metalle, Aktien, Währungen). Keine Anlageberatung.
+      <footer class="text-xs text-muted leading-relaxed mt-10 border-t border-line pt-6">
+        <div class="grid gap-6 md:grid-cols-2 max-w-4xl">
+          <div>
+            <h2 class="text-fg font-bold text-[13px] mb-1.5">Das Prinzip</h2>
+            <p>Kein Asset wird mit einem anderen verglichen, sondern ausschließlich mit seiner eigenen
+            Vergangenheit. Gemessen wird der Abstand des Kurses zu seinem langfristigen Durchschnitt — und
+            anschließend, an wie vielen Handelstagen der Historie dieser Abstand größer war. Das Ergebnis ist
+            eine Zahl zwischen 0 und 1, die sich über alle Anlageklassen hinweg gleich liest.</p>
+          </div>
+          <div>
+            <h2 class="text-fg font-bold text-[13px] mb-1.5">Die beiden Kennzahlen</h2>
+            <p><b class="text-fg">Heat</b> (Metalle, Aktien, Währungen) ist ein Perzentil zum
+            200-Tage-Durchschnitt: 0,10 bedeutet, dass das Asset nur an 10&nbsp;% aller Tage noch günstiger zu
+            seinem Trend stand. <b class="text-fg">Risk</b> (Bitcoin, Ethereum) nutzt den 374-Tage-Durchschnitt
+            und gewichtet ihn über die Zeit, damit die von Zyklus zu Zyklus schrumpfenden Ausschläge
+            vergleichbar bleiben: 0 entspricht dem Niveau historischer Böden, 1 dem historischer Tops.</p>
+          </div>
+        </div>
 
-        <nav class="flex gap-4 flex-wrap mt-5 font-mono text-[12px]" aria-label="Rechtliches">
-          <a routerLink="/impressum" class="text-muted hover:text-fg no-underline">Impressum</a>
-          <a routerLink="/datenschutz" class="text-muted hover:text-fg no-underline">Datenschutz</a>
-          <a href="/snapshot.json" class="text-muted hover:text-fg no-underline">Rohdaten (JSON)</a>
+        <p class="mt-5 max-w-4xl">Der <b class="text-fg">KI-Blasen-Score</b> mittelt bis zu fünf dieser
+        Perzentile: Nasdaq-Trend, Trend des KI-Baskets, dessen Vorsprung vor dem S&amp;P 500, die
+        Marktkonzentration (SPY/RSP) und den Kredit-Risikoappetit (HYG/LQD).</p>
+
+        <p class="mt-3 max-w-4xl">Datenquellen: Coin Metrics und CoinGecko für Krypto, Yahoo Finance mit Stooq
+        als Ersatzquelle für Metalle, Aktien und Währungen. Die Werte werden einmal täglich vorberechnet und
+        unverändert ausgeliefert. <b class="text-fg">Keine Anlageberatung</b> — statistische Modelle ohne
+        Gewähr, jede Entscheidung liegt bei dir.</p>
+
+        <nav class="flex gap-x-5 gap-y-2 flex-wrap mt-6 pt-5 border-t border-line font-mono text-[12px]"
+             aria-label="Rechtliches und Quellen">
+          <a routerLink="/impressum" class="text-muted hover:text-fg no-underline transition-colors">Impressum</a>
+          <a routerLink="/datenschutz" class="text-muted hover:text-fg no-underline transition-colors">Datenschutz</a>
+          <a href="/docs.html" class="text-muted hover:text-fg no-underline transition-colors">Handbuch</a>
+          <a href="/snapshot.json" class="text-muted hover:text-fg no-underline transition-colors">Rohdaten (JSON)</a>
           <a href="https://github.com/Jonesxxl/market-dashboard" target="_blank" rel="noopener"
-             class="text-muted hover:text-fg no-underline">Quellcode ↗</a>
+             class="text-muted hover:text-fg no-underline transition-colors">Quellcode ↗</a>
         </nav>
       </footer>
     </div>
@@ -114,13 +166,18 @@ export class AppComponent {
   protected readonly isError = computed(() =>
     this.data.error() !== null || this.data.failed().length > 0 || this.data.ageDays() > 2);
   protected readonly statusText = computed<string | null>(() => {
-    if (this.data.loading()) return 'Lade Snapshot …';
+    if (this.data.loading()) return 'Daten werden geladen …';
     const err = this.data.error();
-    if (err) return err + ' Der tägliche Berechnungslauf legt ihn unter /snapshot.json ab.';
+    if (err) return err + ' Der tägliche Berechnungslauf legt die Daten unter /snapshot.json ab.';
     const parts: string[] = [];
-    if (!this.data.isBootstrap() && this.data.ageDays() > 2) parts.push(`Snapshot ist ${this.data.ageDays()} Tage alt — der tägliche Lauf scheint zu hängen.`);
+    const age = this.data.ageDays();
+    if (!this.data.isBootstrap() && age > 2) {
+      parts.push(`Der letzte vollständige Berechnungslauf liegt ${age} Tage zurück — die Werte sind entsprechend alt.`);
+    }
     const f = this.data.failed();
-    if (f.length) parts.push('Im letzten Lauf ausgefallen: ' + f.join(', ') + '.');
+    if (f.length) {
+      parts.push(`Beim letzten Lauf nicht aktualisiert: ${f.join(', ')}. Diese Karten zeigen den zuletzt bekannten Stand.`);
+    }
     return parts.length ? parts.join(' ') : null;
   });
 
