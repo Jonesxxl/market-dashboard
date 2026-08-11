@@ -34,6 +34,13 @@ export interface MetricSnapshot {
     priceChart?: boolean;
     /** Erläuterung unter dem Kurschart — etwa die Bezugsgröße eines Index. */
     priceNote?: string;
+    /** Ersetzt „Kurs" in der Statistikzeile und im Chart — für Metriken, deren `price`
+     *  kein Kurs ist, sondern eine Kennzahl (MVRV-Z-Score). */
+    priceLabel?: string;
+    /** Ersetzt die Erklärzeile neben dem großen Wert. */
+    valueLabel?: string;
+    /** „vom Höchststand" ausblenden, wo der Abstand zum Allzeithoch nichts aussagt. */
+    hideAth?: boolean;
   };
 }
 

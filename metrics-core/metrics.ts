@@ -1,7 +1,7 @@
 /** metrics-core · Registry. Eine neue Metrik = ein neuer Eintrag hier — Snapshot, Report und
  *  Generator sehen sie automatisch. */
-import { computeHeat, computeRisk, defaultSignal, fmt } from './math';
-import { fetchCrypto, fetchCryptoBasket, fetchMarket } from './sources';
+import { computeHeat, computeIndicator, computeRisk, defaultSignal, fmt } from './math';
+import { fetchBtcMvrvZ, fetchCrypto, fetchCryptoBasket, fetchMarket } from './sources';
 import { MetricDefinition, MetricResult, Row } from './types';
 
 const round = (n: number) => Math.round(n);
@@ -77,6 +77,45 @@ const crypto: MetricDefinition[] = [
     }),
   },
 ];
+
+/** MVRV-Z-Score: Wie weit liegt der Börsenwert aller Bitcoin über dem Preis, den ihre Besitzer
+ *  im Schnitt bezahlt haben — gemessen in Standardabweichungen des Börsenwerts. Anders als der
+ *  Risk-Wert stützt er sich auf On-Chain-Daten statt allein auf den Kursverlauf. */
+crypto.push({
+  id: 'btc-mvrv-z',
+  label: 'Bitcoin · Börsenwert gegen Einstand der Halter (MVRV-Z-Score)',
+  sym: 'MVRV-Z', assetClass: 'crypto', kind: 'heat', unit: '', dec: 2, hex: '#E8963C',
+  zones: [{ label: 'Kaufzone', text: '< 0.15', below: 0.15 }], hotAbove: 0.85,
+  fetch: () => fetchBtcMvrvZ(),
+  compute: rows => computeIndicator(rows),
+  interpret: r => {
+    const z = r.current.price;
+    const p = r.current.value;
+    const lage = z < 0
+      ? `Der Börsenwert liegt <b>unter</b> dem Einstand der Halter — im Schnitt sitzt der Markt auf Verlusten. Dieser Zustand trat bisher nur in ausgeprägten Bärenmärkten ein.`
+      : z < 1
+        ? `Der Börsenwert liegt nur knapp über dem Einstand der Halter — historisch das Umfeld später Bärenmärkte und früher Erholungen.`
+        : z < 3
+          ? `Der Börsenwert liegt spürbar über dem Einstand der Halter, aber im Rahmen dessen, was über weite Strecken eines Zyklus normal war.`
+          : `Der Börsenwert liegt <b>weit</b> über dem Einstand der Halter — dieses Niveau markierte in der Vergangenheit die späte Phase eines Zyklus.`;
+    const perz = p < 0.5
+      ? `Nur an <b>${round(p * 100)} %</b> aller Tage seit 2011 war der Wert noch niedriger.`
+      : `Nur an <b>${round((1 - p) * 100)} %</b> aller Tage seit 2011 war der Wert noch höher.`;
+    return `Der MVRV-Z-Score vergleicht den Börsenwert aller Bitcoin mit dem <b>Realized Value</b> — der Summe `
+      + `dessen, was zuletzt für jede Münze bezahlt wurde — und drückt den Abstand in Standardabweichungen aus. `
+      + `Aktuell <b>${fmt(z, 2)}</b>. ${lage} ${perz}`
+      + (p < 0.15 ? ' Das ist die <b>Kaufzone</b>.' : p > 0.85 ? ' Das ist die <b>Warnzone</b>.' : '');
+  },
+  extra: () => ({
+    priceChart: true,
+    priceLabel: 'Z-Score',
+    valueLabel: 'Perzentil · 0 = historisch niedrigster Z-Score · 1 = historisch höchster',
+    hideAth: true,
+    priceNote: 'Die Zyklushochs fallen von Mal zu Mal niedriger aus (2013: 10,7 · 2017: 10,1 · 2021: 7,2 · '
+      + '2024: 3,4). Feste Schwellen wie „über 7 heißt Top" greifen deshalb nicht mehr. Auch das Perzentil '
+      + 'darüber löst das nur teilweise, denn es gewichtet alte Zyklen genauso stark wie neue.',
+  }),
+});
 
 /** Top-Holdings des S&P Pantera Digital Asset Index (Launch 21.07.2026). Aufgenommen wird,
  *  was ≥ ~4 Jahre Historie hat — SOL/HYPE wachsen automatisch hinein, sobald Coin Metrics

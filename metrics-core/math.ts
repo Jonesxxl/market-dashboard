@@ -27,6 +27,27 @@ function staleDays(lastDate: string): number {
   return Math.max(0, Math.round((Date.now() - new Date(lastDate).getTime()) / 864e5));
 }
 
+/** Für Reihen, die bereits eine fertige Kennzahl sind (z.B. den MVRV-Z-Score): Der Rohwert
+ *  bleibt als `price` erhalten, `value` ist sein historisches Perzentil. Damit fügt sich die
+ *  Metrik in dieselbe 0…1-Darstellung wie alle anderen, ohne ihre gewohnte Skala zu verlieren.
+ *  Anders als computeHeat wird hier nichts logarithmiert — die Werte dürfen negativ sein. */
+export function computeIndicator(rows: Row[], W = 200): MetricResult {
+  const { dates, prices } = dedupeSort(rows);
+  if (prices.length < W) throw new Error(`Zu wenig Historie: ${prices.length} Tage (mindestens ${W})`);
+  const sorted = [...prices].sort((a, b) => a - b);
+  const values = prices.map(v => percentileRank(sorted, v));
+  return {
+    dates, prices, values,
+    current: {
+      date: dates[dates.length - 1],
+      price: prices[prices.length - 1],
+      sma: prices.slice(-W).reduce((a, b) => a + b, 0) / W,
+      value: values[values.length - 1],
+      staleDays: staleDays(dates[dates.length - 1]),
+    },
+  };
+}
+
 /** Heat: historisches Perzentil von ln(Preis / SMA_W). */
 export function computeHeat(rows: Row[], W = 200): MetricResult {
   const { dates, prices } = dedupeSort(rows);

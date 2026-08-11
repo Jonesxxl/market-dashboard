@@ -8,6 +8,8 @@
 
 **Risk** (nur Bitcoin und Ethereum): min-max-normiertes `ln(Kurs / SMA374) × Tagesindex^0.395`. Die Zeitgewichtung gleicht aus, dass die Ausschläge von Zyklus zu Zyklus kleiner werden. 0 entspricht dem Niveau historischer Zyklusböden, 1 dem Niveau historischer Zyklustops. Die Normierungskonstanten sind seit dem 19.07.2026 eingefroren, damit ein neues Extrem die Historie nicht rückwirkend umskaliert.
 
+**MVRV-Z-Score** (nur Bitcoin): `(Börsenwert − Realized Value) / Standardabweichung(Börsenwert)`, wobei die Standardabweichung expandierend über die bis dahin bekannte Historie läuft. Der Realized Value ist die Summe dessen, was zuletzt für jede Münze bezahlt wurde — also der Einstand der Halter. Werte unter 0 bedeuten, dass der Markt im Schnitt auf Verlusten sitzt. Angezeigt wird zusätzlich das historische Perzentil des Z-Scores seit 2011, damit die Kennzahl auf derselben 0…1-Skala lesbar ist wie alle anderen. Wichtig: Die Zyklushochs fallen von Mal zu Mal niedriger aus (2013: 10,7 · 2017: 10,1 · 2021: 7,2 · 2024: 3,4), feste Schwellen wie „über 7 heißt Top" greifen deshalb nicht mehr.
+
 **KI-Blasen-Score**: Mittelwert aus bis zu fünf Heat-Perzentilen — Nasdaq-Trend, Trend des KI-Baskets, Vorsprung dieses Baskets vor dem S&P 500, Marktkonzentration (SPY/RSP) und Kredit-Risikoappetit (HYG/LQD).
 
 ## Wichtige Konventionen
@@ -19,7 +21,7 @@
 ## Seiten
 
 - [Startseite](https://chipper-cucurucho-5d0a49.netlify.app/): Überblick mit je einer Kennzahl pro Anlageklasse.
-- [Krypto](https://chipper-cucurucho-5d0a49.netlify.app/krypto): Risk-Werte für Bitcoin und Ethereum, Kursniveaus je Risk-Zone, Digital-Asset-Basket, Vergleich der Bärenmärkte 2017/18 und 2025/26.
+- [Krypto](https://chipper-cucurucho-5d0a49.netlify.app/krypto): Risk-Werte für Bitcoin und Ethereum, MVRV-Z-Score für Bitcoin, Kursniveaus je Risk-Zone, Digital-Asset-Basket, Vergleich der Bärenmärkte 2017/18 und 2025/26.
 - [Edelmetalle](https://chipper-cucurucho-5d0a49.netlify.app/metalle): Gold, Silber, Palladium sowie Gold/Silber- und Palladium/Gold-Verhältnis.
 - [Nasdaq und KI](https://chipper-cucurucho-5d0a49.netlify.app/nasdaq-ki): Nasdaq-100-Heat, KI-Basket, Marktkonzentration, Kredit-Risikoappetit, KI-Blasen-Score.
 - [Währungen](https://chipper-cucurucho-5d0a49.netlify.app/waehrungen): Dollar-Index, USD/EUR, USD/CHF, USD/CNY, USD/GHS.
@@ -32,7 +34,7 @@
 
 ## Quellen
 
-Coin Metrics und CoinGecko für Kryptowährungen; Yahoo Finance als Hauptquelle und Stooq als Ersatzquelle für Edelmetalle, Aktien und Währungen.
+Coin Metrics und CoinGecko für Kryptowährungen; Yahoo Finance als Hauptquelle und Stooq als Ersatzquelle für Edelmetalle, Aktien und Währungen. Der MVRV-Z-Score wird aus den On-Chain-Daten von Coin Metrics berechnet (tiefe Historie ab 2011) und für die jüngsten Tage von bitcoin-data.com ergänzt, weil die Coin-Metrics-Community-Daten rund zweieinhalb Monate zurückliegen. Beide Reihen sind identisch skaliert: über 1382 gemeinsame Tage beträgt die mittlere Abweichung 0,009.
 
 ## Grenzen
 

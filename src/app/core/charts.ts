@@ -69,13 +69,15 @@ export function priceSparklineSvg(
     // series.months liefert volle Datumsangaben (2020-10-01). Erst auf YYYY-MM kürzen,
     // sonst endet jeder Eintrag auf '-01' und die Jahresmarke stünde an jedem Monat.
     const ym = months[i].slice(0, 7);
-    if (ym < cut || p == null || !isFinite(p) || p <= 0) continue;
+    if (ym < cut || p == null || !isFinite(p)) continue;
     pts.push(p); ms.push(ym);
   }
   if (pts.length < 2) return null;
 
   const lo = Math.min(...pts), hi = Math.max(...pts);
-  const log = hi / lo > 8;
+  // Log-Skala nur bei durchweg positiven Reihen — Kennzahlen wie der MVRV-Z-Score
+  // werden negativ, dort ist sie weder definiert noch sinnvoll.
+  const log = lo > 0 && hi / lo > 8;
   const tr = (v: number) => (log ? Math.log(v) : v);
   const tLo = tr(lo), tHi = tr(hi);
   const span = tHi - tLo || 1;
@@ -91,6 +93,11 @@ export function priceSparklineSvg(
   for (const v of [lo, mid, hi]) {
     g += `<line x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="#1D2A42" stroke-width="1"/>
         <text x="${L - 5}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end">${fmt(v, dec)}</text>`;
+  }
+  // Nulllinie hervorheben, wo die Reihe das Vorzeichen wechselt — beim MVRV-Z-Score
+  // markiert sie den Punkt, an dem der Markt unter den Einstand seiner Halter fällt.
+  if (lo < 0 && hi > 0) {
+    g += `<line x1="${L}" x2="${W - R}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}" stroke="#5A667E" stroke-width="1" stroke-dasharray="3 3"/>`;
   }
   ms.forEach((m, i) => {
     if (m.endsWith('-01'))
