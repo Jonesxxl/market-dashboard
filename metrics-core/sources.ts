@@ -35,6 +35,87 @@ export async function fetchCoinMetrics(asset: string): Promise<Row[]> {
   return out;
 }
 
+/* ===== Bitcoin · MVRV-Z-Score =====
+ * (Börsenwert − Realized Value) ÷ Standardabweichung des Börsenwerts. Die Standardabweichung
+ * läuft expandierend über die bis dahin bekannte Historie — das ist die verbreitete Definition;
+ * eine feste Standardabweichung über die Gesamthistorie ergäbe eine deutlich andere Reihe.
+ *
+ * Coin Metrics liefert keine Realized Cap als eigene Spalte, wohl aber `CapMVRVCur`; daraus
+ * folgt sie exakt als CapMrktCurUSD ÷ CapMVRVCur.
+ *
+ * Die Community-CSV hinkt rund zweieinhalb Monate hinterher, deshalb füllt bitcoin-data.com
+ * die jüngsten Tage auf. Beide Reihen sind identisch skaliert — im Überlappungsbereich von
+ * 1382 Tagen beträgt die mittlere Abweichung 0,009. */
+
+/** Ohne Vorlauf ist die Standardabweichung aus wenigen Anfangstagen winzig und der Quotient
+ *  explodiert (über 30 im Juli 2010). Ein Jahr Vorlauf schneidet diesen Artefaktbereich ab. */
+const MVRV_WARMUP = 365;
+
+async function fetchMvrvFromCoinMetrics(): Promise<Row[]> {
+  const res = await fetch('https://raw.githubusercontent.com/coinmetrics/data/master/csv/btc.csv');
+  if (!res.ok) throw new Error('Coin Metrics HTTP ' + res.status);
+  const lines = (await res.text()).split('\n');
+  const head = lines[0].split(',');
+  const iT = head.indexOf('time');
+  const iCap = head.indexOf('CapMrktCurUSD');
+  const iMvrv = head.indexOf('CapMVRVCur');
+  if (iT < 0 || iCap < 0 || iMvrv < 0) throw new Error('Coin Metrics: Spalten für MVRV fehlen');
+
+  const out: Row[] = [];
+  // Welford: numerisch stabil, denn Börsenwerte im Billionenbereich quadriert sprengen
+  // die Genauigkeit der naiven Summenformel.
+  let n = 0, mean = 0, m2 = 0;
+  for (let i = 1; i < lines.length; i++) {
+    const c = lines[i].split(',');
+    if (c.length < 3) continue;
+    const cap = parseFloat(c[iCap]), mvrv = parseFloat(c[iMvrv]);
+    if (!c[iT] || !isFinite(cap) || !isFinite(mvrv) || cap <= 0 || mvrv <= 0) continue;
+    const realized = cap / mvrv;
+    n++;
+    const d1 = cap - mean; mean += d1 / n; m2 += d1 * (cap - mean);
+    if (n < MVRV_WARMUP) continue;
+    const sd = Math.sqrt(m2 / n);
+    if (sd > 0) out.push([c[iT].slice(0, 10), (cap - realized) / sd]);
+  }
+  if (!out.length) throw new Error('Coin Metrics: keine MVRV-Reihe berechenbar');
+  return out;
+}
+
+async function fetchMvrvLive(): Promise<Row[]> {
+  const res = await fetch('https://bitcoin-data.com/v1/mvrv-zscore', { headers: { accept: 'application/json' } });
+  if (!res.ok) throw new Error('bitcoin-data HTTP ' + res.status);
+  const j = (await res.json()) as { d: string; mvrvZscore: number | string }[];
+  if (!Array.isArray(j)) throw new Error('bitcoin-data: unerwartetes Format');
+  const out: Row[] = [];
+  for (const x of j) {
+    const v = typeof x.mvrvZscore === 'string' ? parseFloat(x.mvrvZscore) : x.mvrvZscore;
+    if (x.d && isFinite(v)) out.push([x.d.slice(0, 10), v]);
+  }
+  if (!out.length) throw new Error('bitcoin-data: leere Reihe');
+  return out;
+}
+
+/** Beide Quellen zusammenführen. Fällt eine aus, trägt die andere die Metrik weiter:
+ *  ohne Coin Metrics bleiben vier Jahre Historie, ohne die Live-Quelle altert der Wert
+ *  sichtbar über `staleDays`. */
+export async function fetchBtcMvrvZ(): Promise<Row[]> {
+  const errors: string[] = [];
+  const parts: Row[][] = [];
+
+  const cm = await fetchMvrvFromCoinMetrics()
+    .catch((e: Error) => { errors.push('CoinMetrics: ' + e.message); return [] as Row[]; });
+  if (cm.length) parts.push(cm);
+
+  const live = await withRetry(() => fetchMvrvLive())
+    .catch((e: Error) => { errors.push('bitcoin-data: ' + e.message); return [] as Row[]; });
+  if (live.length) parts.push(live);
+
+  if (!parts.length) throw new Error('MVRV-Z: keine Quelle verfügbar — ' + errors.join(' · '));
+  if (errors.length) console.warn('btc-mvrv-z: ' + errors.join(' · '));
+  // Reihenfolge = Priorität bei gleichem Datum, die Live-Quelle steht hinten und gewinnt.
+  return parts.flat();
+}
+
 export async function fetchGecko(id: string, tries = 3): Promise<Row[]> {
   for (let a = 1; a <= tries; a++) {
     try {

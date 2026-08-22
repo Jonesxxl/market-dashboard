@@ -72,15 +72,15 @@
   <h2>Zyklus-Risk-Metrik (Krypto)</h2>
   <p class="lead">Misst, wie weit der Kurs über oder unter seinem langfristigen Trend liegt — gewichtet mit der Zeit,
   weil Bitcoins Volatilität mit jedem Zyklus abnimmt. Normiert auf 0 (historischer Boden) bis 1 (historisches Top).</p>
-  <div class="formula">risk = norm( ln(<i>Preis</i> / SMA<sub>374</sub>) × <i>Tage</i><sup>0.395</sup> ) <i>// min-max über die volle Historie</i></div>
+  <div class="formula">risk = norm( ln(<i>Preis</i> / SMA<sub>340</sub>) × <i>Tage</i><sup>0.2</sup> ) <i>// Fenster, Exponent und Grenzen je Asset eingefroren</i></div>
 
   <div class="card">
     <div class="play">
       <div>
         <div class="slider"><label>BTC-Preis <output id="o-p">60.000 $</output></label>
           <input type="range" id="s-p" min="20000" max="200000" step="1000" value="60000" aria-label="BTC-Preis"></div>
-        <div class="slider"><label>374-Tage-SMA <output id="o-s">95.000 $</output></label>
-          <input type="range" id="s-s" min="40000" max="140000" step="1000" value="95000" aria-label="374-Tage-SMA"></div>
+        <div class="slider"><label>340-Tage-SMA <output id="o-s">95.000 $</output></label>
+          <input type="range" id="s-s" min="40000" max="140000" step="1000" value="95000" aria-label="340-Tage-SMA"></div>
         <div class="slider"><label>Alter des Assets <output id="o-d">5.800 Tage (heute)</output></label>
           <input type="range" id="s-d" min="1500" max="9000" step="100" value="5800" aria-label="Alter in Tagen"></div>
         <p style="font-size:12.5px;color:var(--muted)">Der Zeit-Exponent ist der Kern: Dieselbe Trendabweichung erzeugt
@@ -182,7 +182,7 @@
     reskaliert rückwirkend alle Werte — der Risk-Wert von heute kann in einem Jahr leicht anders aussehen.
     Abhilfe: Normierungskonstanten einfrieren oder Expanding Window.</div></details>
   <details><summary>Handelstage vs. Kalendertage</summary><div class="body">
-    Krypto handelt 365 Tage, Aktien ~252. Die SMA-Fenster (374/200) meinen daher nicht exakt dieselbe
+    Krypto handelt 365 Tage, Aktien ~252. Die SMA-Fenster (340 bzw. 374 für Risk, 200 für Heat) meinen daher nicht exakt dieselbe
     Kalenderzeit — Heat-Werte zwischen Krypto und Aktien sind vergleichbar, aber nicht identisch definiert.</div></details>
   <details><summary>Quellen-Lag</summary><div class="body">
     Das Coin-Metrics-Repo kann Tage bis Wochen hinterherhängen (beobachtet: 5 Wochen). CoinGecko schließt

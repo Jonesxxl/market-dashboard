@@ -32,7 +32,7 @@ export const routes: Routes = [
   },
   {
     path: 'waehrungen', title: 'Währungen — Dollar-Index und Paare',
-    data: { description: 'Dollar-Index, USD/EUR, USD/CHF, USD/CNY und USD/GHS — durchgehend mit dem Dollar als Basiswährung, eine steigende Kurve bedeutet also immer einen stärkeren Dollar. Extreme markieren gedehnte Bewegungen.' },
+    data: { description: 'Dollar-Index, USD/EUR, USD/CHF, USD/CNY, USD/GHS und das Kreuzpaar CHF/EUR — je Karte der Heat-Wert und der tatsächliche Kursverlauf. Bei den Dollar-Paaren bedeutet eine steigende Kurve immer einen stärkeren Dollar.' },
     loadComponent: () => import('./pages/fx.component').then(m => m.FxComponent),
   },
   {
@@ -123,7 +123,7 @@ export const routes: Routes = [
             <h2 class="text-fg font-bold text-[13px] mb-1.5">Die beiden Kennzahlen</h2>
             <p><b class="text-fg">Heat</b> (Metalle, Aktien, Währungen) ist ein Perzentil zum
             200-Tage-Durchschnitt: 0,10 bedeutet, dass das Asset nur an 10&nbsp;% aller Tage noch günstiger zu
-            seinem Trend stand. <b class="text-fg">Risk</b> (Bitcoin, Ethereum) nutzt den 374-Tage-Durchschnitt
+            seinem Trend stand. <b class="text-fg">Risk</b> (Bitcoin, Ethereum) nutzt einen mehrjährigen Durchschnitt
             und gewichtet ihn über die Zeit, damit die von Zyklus zu Zyklus schrumpfenden Ausschläge
             vergleichbar bleiben: 0 entspricht dem Niveau historischer Böden, 1 dem historischer Tops.</p>
           </div>

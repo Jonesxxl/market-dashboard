@@ -1,7 +1,7 @@
 /** metrics-core · Registry. Eine neue Metrik = ein neuer Eintrag hier — Snapshot, Report und
  *  Generator sehen sie automatisch. */
-import { computeHeat, computeRisk, defaultSignal, fmt } from './math';
-import { fetchCrypto, fetchCryptoBasket, fetchMarket } from './sources';
+import { computeHeat, computeIndicator, computeRisk, defaultSignal, fmt, RISK_CONSTANTS } from './math';
+import { fetchBtcMvrvZ, fetchCrypto, fetchCryptoBasket, fetchMarket } from './sources';
 import { MetricDefinition, MetricResult, Row } from './types';
 
 const round = (n: number) => Math.round(n);
@@ -39,37 +39,50 @@ const crypto: MetricDefinition[] = [
   {
     id: 'btc-risk', label: 'Bitcoin', sym: 'BTC', assetClass: 'crypto', kind: 'risk',
     unit: '$', dec: 0, hex: '#E8963C',
+    /* Schwellen der v2-Kalibrierung. Abgeleitet, nicht geraten: Die obere Stufe liegt auf
+       der gestrichelten Kauflinie (0,30 — trifft 17,1 % aller Tage), die beiden unteren
+       bilden dieselbe Kaskadenform wie unter v1 nach (4,6 % und 1,1 % gegenüber früher
+       10 %, 3,5 % und 0,8 %). */
     zones: [
-      { label: 'Basisrate', text: '< 0.20', below: 0.20 },
-      { label: 'Rate erhöhen', text: '< 0.10', below: 0.10 },
-      { label: 'Kapitulation', text: '< 0.05', below: 0.05 },
+      { label: 'Basisrate', text: '< 0.30', below: 0.30 },
+      { label: 'Rate erhöhen', text: '< 0.20', below: 0.20 },
+      { label: 'Kapitulation', text: '< 0.15', below: 0.15 },
     ],
-    hotAbove: null,
+    hotAbove: 0.70,
     fetch: ctx => fetchCrypto('btc', 'bitcoin', 'BTC-USD', ctx),
     compute: rows => computeRisk(rows, 'btc'),
     interpret: r => riskInterpret('BTC', r),
     extra: r => ({
       riskLevels: RISK_LEVELS.map(lv => ({ r: lv, price: Math.round(r.priceForValue!(lv)) })),
+      smaDays: RISK_CONSTANTS['btc'].W,
+      chartBands: [0.30, 0.70],
+      // Aus der v2-Kalibrierung neu bestimmt. Die Böden 2015, 2018 und 2022 liegen mit
+      // 0.099/0.110/0.091 so dicht beieinander, dass getrennte Marken sich überlappen.
       ghosts: [
-        { r: 0.00, t: 'Boden 18' }, { r: 0.04, t: 'Boden 15/22' },
-        { r: 0.48, t: 'ATH 25' }, { r: 0.93, t: 'ATH 13' },
+        { r: 0.10, t: 'Böden 15/18/22' },
+        { r: 0.56, t: 'ATH 25' }, { r: 0.88, t: 'ATH 21' },
       ],
     }),
   },
   {
     id: 'eth-risk', label: 'Ethereum', sym: 'ETH', assetClass: 'crypto', kind: 'risk',
     unit: '$', dec: 0, hex: '#8A7BF0',
+    /* Ethereum steht weiter auf der v1-Kalibrierung — ohne Referenzpunkte wäre jede
+       Neuberechnung geraten. Angeglichen ist nur die obere Stufe, damit sie wie bei
+       Bitcoin auf der gestrichelten Kauflinie sitzt. */
     zones: [
-      { label: 'Kleine Tranchen', text: '< 0.25', below: 0.25 },
+      { label: 'Kleine Tranchen', text: '< 0.30', below: 0.30 },
       { label: 'Rate erhöhen', text: '< 0.10', below: 0.10 },
       { label: 'Kapitulation', text: '< 0.05', below: 0.05 },
     ],
-    hotAbove: null,
+    hotAbove: 0.70,
     fetch: ctx => fetchCrypto('eth', 'ethereum', 'ETH-USD', ctx),
     compute: rows => computeRisk(rows, 'eth'),
     interpret: r => riskInterpret('ETH', r),
     extra: r => ({
       riskLevels: RISK_LEVELS.map(lv => ({ r: lv, price: Math.round(r.priceForValue!(lv)) })),
+      smaDays: RISK_CONSTANTS['eth'].W,
+      chartBands: [0.30, 0.70],
       ghosts: [
         { r: 0.00, t: 'Boden 18' }, { r: 0.09, t: 'Boden 22' },
         { r: 0.71, t: 'ATH 25' }, { r: 0.88, t: 'ATH 18' },
@@ -77,6 +90,45 @@ const crypto: MetricDefinition[] = [
     }),
   },
 ];
+
+/** MVRV-Z-Score: Wie weit liegt der Börsenwert aller Bitcoin über dem Preis, den ihre Besitzer
+ *  im Schnitt bezahlt haben — gemessen in Standardabweichungen des Börsenwerts. Anders als der
+ *  Risk-Wert stützt er sich auf On-Chain-Daten statt allein auf den Kursverlauf. */
+crypto.push({
+  id: 'btc-mvrv-z',
+  label: 'Bitcoin · Börsenwert gegen Einstand der Halter (MVRV-Z-Score)',
+  sym: 'MVRV-Z', assetClass: 'crypto', kind: 'heat', unit: '', dec: 2, hex: '#E8963C',
+  zones: [{ label: 'Kaufzone', text: '< 0.15', below: 0.15 }], hotAbove: 0.85,
+  fetch: () => fetchBtcMvrvZ(),
+  compute: rows => computeIndicator(rows),
+  interpret: r => {
+    const z = r.current.price;
+    const p = r.current.value;
+    const lage = z < 0
+      ? `Der Börsenwert liegt <b>unter</b> dem Einstand der Halter — im Schnitt sitzt der Markt auf Verlusten. Dieser Zustand trat bisher nur in ausgeprägten Bärenmärkten ein.`
+      : z < 1
+        ? `Der Börsenwert liegt nur knapp über dem Einstand der Halter — historisch das Umfeld später Bärenmärkte und früher Erholungen.`
+        : z < 3
+          ? `Der Börsenwert liegt spürbar über dem Einstand der Halter, aber im Rahmen dessen, was über weite Strecken eines Zyklus normal war.`
+          : `Der Börsenwert liegt <b>weit</b> über dem Einstand der Halter — dieses Niveau markierte in der Vergangenheit die späte Phase eines Zyklus.`;
+    const perz = p < 0.5
+      ? `Nur an <b>${round(p * 100)} %</b> aller Tage seit 2011 war der Wert noch niedriger.`
+      : `Nur an <b>${round((1 - p) * 100)} %</b> aller Tage seit 2011 war der Wert noch höher.`;
+    return `Der MVRV-Z-Score vergleicht den Börsenwert aller Bitcoin mit dem <b>Realized Value</b> — der Summe `
+      + `dessen, was zuletzt für jede Münze bezahlt wurde — und drückt den Abstand in Standardabweichungen aus. `
+      + `Aktuell <b>${fmt(z, 2)}</b>. ${lage} ${perz}`
+      + (p < 0.15 ? ' Das ist die <b>Kaufzone</b>.' : p > 0.85 ? ' Das ist die <b>Warnzone</b>.' : '');
+  },
+  extra: () => ({
+    priceChart: true,
+    priceLabel: 'Z-Score',
+    valueLabel: 'Perzentil · 0 = historisch niedrigster Z-Score · 1 = historisch höchster',
+    hideAth: true,
+    priceNote: 'Die Zyklushochs fallen von Mal zu Mal niedriger aus (2013: 10,7 · 2017: 10,1 · 2021: 7,2 · '
+      + '2024: 3,4). Feste Schwellen wie „über 7 heißt Top" greifen deshalb nicht mehr. Auch das Perzentil '
+      + 'darüber löst das nur teilweise, denn es gewichtet alte Zyklen genauso stark wie neue.',
+  }),
+});
 
 /** Top-Holdings des S&P Pantera Digital Asset Index (Launch 21.07.2026). Aufgenommen wird,
  *  was ≥ ~4 Jahre Historie hat — SOL/HYPE wachsen automatisch hinein, sobald Coin Metrics
@@ -189,6 +241,9 @@ const fxDef = (id: string, label: string, sym: string, hex: string, y: string, s
   },
   compute: rows => computeHeat(rows),
   interpret: r => fxInterpret(up, down, r, r.dates[0].slice(0, 4)),
+  // Der Heat-Wert allein zeigt nur, wie ungewöhnlich der Stand ist — nicht, wo der Kurs
+  // steht. Bei Währungen ist genau das die Frage, deshalb hier immer der Kursverlauf dazu.
+  extra: () => ({ priceChart: true }),
 });
 const fx: MetricDefinition[] = [
   fxDef('dxy', 'Dollar-Index', 'DXY', '#5FA8F5', 'DX-Y.NYB', '^dxy', 1,
@@ -206,6 +261,11 @@ const fx: MetricDefinition[] = [
   fxDef('usdghs', 'US-Dollar / Ghana Cedi', 'USD/GHS', '#7FD0C9', 'GHS=X', 'usdghs', 2,
     'Der Cedi verliert an Wert — bei Frontier-Währungen meist Inflations- und Schuldensignal.',
     'Der Cedi stabilisiert sich gegen den Dollar.'),
+  // Einziges Kreuzpaar ohne Dollar: Wie viele Euro kostet ein Franken. Steigt die Kurve,
+  // ist der Franken stark — die Dollar-Leserichtung der übrigen Paare gilt hier also nicht.
+  fxDef('chfeur', 'Schweizer Franken / Euro', 'CHF/EUR', '#B8C4D4', 'CHFEUR=X', 'chfeur', 4,
+    'Der Franken ist stark zum Euro — Schweizer Waren und Anlagen verteuern sich aus Euro-Sicht.',
+    'Der Franken gibt gegenüber dem Euro nach — für den Franken historisch die seltenere Richtung.'),
 ];
 
 /** Die Registry: Snapshot-Builder, Report und Generator iterieren hierüber. */

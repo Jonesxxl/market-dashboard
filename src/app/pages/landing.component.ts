@@ -98,7 +98,7 @@ export class LandingComponent {
       },
       {
         route: '/waehrungen', title: 'Währungen',
-        desc: 'Dollar-Index sowie USD/EUR, USD/CHF, USD/CNY und USD/GHS — durchgehend aus Dollar-Sicht, weit gedehnte Bewegungen als Makro-Frühindikator.',
+        desc: 'Dollar-Index sowie USD/EUR, USD/CHF, USD/CNY, USD/GHS und CHF/EUR — je Karte mit Heat-Wert und echtem Kursverlauf, gedehnte Bewegungen als Makro-Frühindikator.',
         metric: 'USD/EUR Heat', value: eur ? eur.current.value.toFixed(2) : null,
         color: '#F2B33D',
       },

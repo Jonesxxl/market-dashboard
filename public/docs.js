@@ -15,7 +15,8 @@ document.querySelectorAll('.node').forEach(n=>{
 });
 
 /* ---------- Playground: echte BTC-Normierungskonstanten ---------- */
-const LO=-22.6972, HI=40.2596; // min/max von ln(P/SMA374)·t^0.395 über die BTC-Historie
+// Kalibrierung v2 (22.08.2026) — identisch mit RISK_CONSTANTS.btc im Live-Dashboard
+const W=340, EXP=0.2, LO=-5.7827, HI=8.4375;
 const fmt=n=>n.toLocaleString('de-DE');
 function playRisk(){
   const p=+document.getElementById('s-p').value,
@@ -24,7 +25,7 @@ function playRisk(){
   document.getElementById('o-p').textContent=fmt(p)+' $';
   document.getElementById('o-s').textContent=fmt(s)+' $';
   document.getElementById('o-d').textContent=fmt(d)+' Tage'+(Math.abs(d-5800)<100?' (heute)':'');
-  const r=Math.min(1,Math.max(0,(Math.log(p/s)*Math.pow(d,0.395)-LO)/(HI-LO)));
+  const r=Math.min(1,Math.max(0,(Math.log(p/s)*Math.pow(d,EXP)-LO)/(HI-LO)));
   const out=document.getElementById('riskout'); out.textContent=r.toFixed(2);
   out.style.color=r<0.2?'var(--teal)':r<0.5?'var(--amber)':'var(--red)';
   const z=document.getElementById('riskzone');

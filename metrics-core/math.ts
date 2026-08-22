@@ -1,11 +1,25 @@
 /** metrics-core · Mathematik. Reine Funktionen, keine Abhängigkeiten. */
 import { MetricResult, Row } from './types';
 
-/** Eingefrorene Normierungskonstanten der Zyklus-Risk-Metrik (v1, fixiert 2026-07-19).
- *  Damit reskaliert ein neues Extrem NICHT rückwirkend die Historie (kein Repainting). */
-export const RISK_CONSTANTS: Record<string, { lo: number; hi: number; genesis: string }> = {
-  btc: { lo: -22.6972, hi: 40.2596, genesis: '2010-07-18' },
-  eth: { lo: -30.1171, hi: 31.9041, genesis: '2015-08-08' },
+/** Eingefrorene Konstanten der Zyklus-Risk-Metrik. Eingefroren heißt: Ein neues Extrem
+ *  reskaliert die Historie NICHT rückwirkend (kein Repainting). Geändert wird nur bewusst,
+ *  mit Versionssprung und neuer Kalibrierung.
+ *
+ *  Normierung und Formparameter je Asset. `W` (Fenster des gleitenden Durchschnitts) und
+ *  `exp` (Zeitgewichtung) gehören mit hierher, weil sie sich nicht unabhängig von `lo`/`hi`
+ *  ändern lassen — jede Kombination ist eine eigene, eingefrorene Kalibrierung.
+ *
+ *  btc · v2, kalibriert 2026-08-22 gegen 15 abgelesene Referenzpunkte der Risk-Kurve von
+ *  Into the Cryptoverse ab 2017 (Leave-one-out-Fehler 0,049; die Vorgängerversion lag im
+ *  Mittel 0,077 zu tief). Bewusst nur auf Punkte ab 2017 gefittet: Vor 2016 weichen schon
+ *  die Kursquellen um bis zu 8,5 % voneinander ab, und der Chart der Seite zeigt sechs
+ *  Jahre — dort wird die frühe Abweichung von bis zu 0,22 gar nicht sichtbar.
+ *
+ *  eth · unverändert v1. Für Ethereum liegen keine Referenzpunkte vor, deshalb bleiben
+ *  Fenster und Exponent der alten Kalibrierung stehen. */
+export const RISK_CONSTANTS: Record<string, { lo: number; hi: number; genesis: string; W: number; exp: number }> = {
+  btc: { lo: -5.7827, hi: 8.4375, genesis: '2010-07-18', W: 340, exp: 0.2 },
+  eth: { lo: -30.1171, hi: 31.9041, genesis: '2015-08-08', W: 374, exp: 0.395 },
 };
 
 export const fmt = (n: number, d = 0): string =>
@@ -25,6 +39,27 @@ export function percentileRank(sortedAsc: number[], v: number): number {
 
 function staleDays(lastDate: string): number {
   return Math.max(0, Math.round((Date.now() - new Date(lastDate).getTime()) / 864e5));
+}
+
+/** Für Reihen, die bereits eine fertige Kennzahl sind (z.B. den MVRV-Z-Score): Der Rohwert
+ *  bleibt als `price` erhalten, `value` ist sein historisches Perzentil. Damit fügt sich die
+ *  Metrik in dieselbe 0…1-Darstellung wie alle anderen, ohne ihre gewohnte Skala zu verlieren.
+ *  Anders als computeHeat wird hier nichts logarithmiert — die Werte dürfen negativ sein. */
+export function computeIndicator(rows: Row[], W = 200): MetricResult {
+  const { dates, prices } = dedupeSort(rows);
+  if (prices.length < W) throw new Error(`Zu wenig Historie: ${prices.length} Tage (mindestens ${W})`);
+  const sorted = [...prices].sort((a, b) => a - b);
+  const values = prices.map(v => percentileRank(sorted, v));
+  return {
+    dates, prices, values,
+    current: {
+      date: dates[dates.length - 1],
+      price: prices[prices.length - 1],
+      sma: prices.slice(-W).reduce((a, b) => a + b, 0) / W,
+      value: values[values.length - 1],
+      staleDays: staleDays(dates[dates.length - 1]),
+    },
+  };
 }
 
 /** Heat: historisches Perzentil von ln(Preis / SMA_W). */
@@ -49,11 +84,13 @@ export function computeHeat(rows: Row[], W = 200): MetricResult {
   };
 }
 
-/** Zyklus-Risk: min-max-normiertes ln(Preis/SMA374) × Tagesindex^0.395 mit EINGEFRORENEN Konstanten. */
-export function computeRisk(rows: Row[], constKey: string, W = 374): MetricResult {
+/** Zyklus-Risk: min-max-normiertes ln(Preis/SMA_W) × Tagesindex^exp — W, exp und die
+ *  Normierungsgrenzen kommen aus RISK_CONSTANTS und sind je Asset eingefroren. */
+export function computeRisk(rows: Row[], constKey: string): MetricResult {
   const { dates, prices } = dedupeSort(rows);
   const C = RISK_CONSTANTS[constKey];
   if (!C) throw new Error('Keine eingefrorenen Konstanten für ' + constKey);
+  const W = C.W;
   const t0 = new Date(C.genesis).getTime();
   const values: (number | null)[] = new Array(dates.length).fill(null);
   let sum = 0; let lastSma = 0; let lastIdx = 1;
@@ -62,7 +99,7 @@ export function computeRisk(rows: Row[], constKey: string, W = 374): MetricResul
     if (i >= W - 1) {
       lastSma = sum / W;
       lastIdx = Math.max(1, (new Date(dates[i]).getTime() - t0) / 864e5);
-      const raw = Math.log(prices[i] / lastSma) * Math.pow(lastIdx, 0.395);
+      const raw = Math.log(prices[i] / lastSma) * Math.pow(lastIdx, C.exp);
       values[i] = Math.min(1, Math.max(0, (raw - C.lo) / (C.hi - C.lo)));
     }
   }
@@ -73,7 +110,7 @@ export function computeRisk(rows: Row[], constKey: string, W = 374): MetricResul
       date: dates[dates.length - 1], price: prices[prices.length - 1], sma,
       value: values[values.length - 1] ?? 0, staleDays: staleDays(dates[dates.length - 1]),
     },
-    priceForValue: (r: number) => sma * Math.exp((r * (C.hi - C.lo) + C.lo) / Math.pow(idx, 0.395)),
+    priceForValue: (r: number) => sma * Math.exp((r * (C.hi - C.lo) + C.lo) / Math.pow(idx, C.exp)),
   };
 }
 

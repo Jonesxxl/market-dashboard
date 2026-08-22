@@ -12,6 +12,7 @@ export interface TipData {
 export function sparklineSvg(
   dates: string[], vals: (number | null)[], color: string,
   years = 6, label = 'Heat', extra: number[] | null = null, unit = '',
+  dec = 2, bands: readonly [number, number] | null = [0.15, 0.85],
 ): { svg: string; tip: TipData } | null {
   const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - years);
   const cut = cutoff.toISOString().slice(0, 10);
@@ -33,8 +34,13 @@ export function sparklineSvg(
     g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="#1D2A42" stroke-width="1"/>
         <text x="${L - 5}" y="${y(v) + 3}" text-anchor="end">${t}</text>`;
   });
-  g += `<line x1="${L}" x2="${W - R}" y1="${y(0.15)}" y2="${y(0.15)}" stroke="#22C6B8" stroke-width="1" stroke-dasharray="3 4" opacity=".55"/>
-      <line x1="${L}" x2="${W - R}" y1="${y(0.85)}" y2="${y(0.85)}" stroke="#F0533F" stroke-width="1" stroke-dasharray="3 4" opacity=".55"/>`;
+  // Nur wo die Metrik wirklich Zonen kennt. Währungen haben keine — dort wären die
+  // Linien samt Beschriftung eine Behauptung, die der Seitentext ausdrücklich verneint.
+  // Die Schwellen kommen von der Metrik, weil sie je nach Kennzahl anders liegen.
+  if (bands) {
+    g += `<line x1="${L}" x2="${W - R}" y1="${y(bands[0])}" y2="${y(bands[0])}" stroke="#22C6B8" stroke-width="1" stroke-dasharray="3 4" opacity=".55"/>
+      <line x1="${L}" x2="${W - R}" y1="${y(bands[1])}" y2="${y(bands[1])}" stroke="#F0533F" stroke-width="1" stroke-dasharray="3 4" opacity=".55"/>`;
+  }
   months.forEach((m, i) => {
     if (m.endsWith('-01'))
       g += `<line x1="${x(i)}" x2="${x(i)}" y1="${y(1)}" y2="${y(0)}" stroke="#1D2A42" opacity=".6"/>
@@ -45,11 +51,11 @@ export function sparklineSvg(
   g += `<path d="${d}" fill="none" stroke="${color}" stroke-width="1.8"/>
       <circle cx="${lx}" cy="${ly}" r="3.2" fill="${color}"/>
       <text x="${Math.min(lx + 5, W - R)}" y="${ly < T + 14 ? ly + 14 : ly - 6}" text-anchor="end" style="fill:${color};font-weight:600">${pts[pts.length - 1].toFixed(2)}</text>
-      <text x="${W - R}" y="${T + 2}" text-anchor="end">${label} · ${years} Jahre · gestrichelt: Kauf-/Warnzone</text>`;
+      <text x="${W - R}" y="${T + 2}" text-anchor="end">${label} · ${years} Jahre${bands ? ` · gestrichelt: Kauf ${bands[0].toFixed(2).replace('.', ',')} / Warnung ${bands[1].toFixed(2).replace('.', ',')}` : ''}</text>`;
   const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" role="img" aria-label="${label}-Verlauf, letzte ${years} Jahre">${g}</svg>`;
   const tip: TipData = {
     m: months, v: pts.map(v => +v.toFixed(3)),
-    p: extra ? ex.map(v => +v.toFixed(2)) : null, l: label, u: unit,
+    p: extra ? ex.map(v => +v.toFixed(dec)) : null, l: label, u: unit,
   };
   return { svg, tip };
 }
@@ -69,13 +75,15 @@ export function priceSparklineSvg(
     // series.months liefert volle Datumsangaben (2020-10-01). Erst auf YYYY-MM kürzen,
     // sonst endet jeder Eintrag auf '-01' und die Jahresmarke stünde an jedem Monat.
     const ym = months[i].slice(0, 7);
-    if (ym < cut || p == null || !isFinite(p) || p <= 0) continue;
+    if (ym < cut || p == null || !isFinite(p)) continue;
     pts.push(p); ms.push(ym);
   }
   if (pts.length < 2) return null;
 
   const lo = Math.min(...pts), hi = Math.max(...pts);
-  const log = hi / lo > 8;
+  // Log-Skala nur bei durchweg positiven Reihen — Kennzahlen wie der MVRV-Z-Score
+  // werden negativ, dort ist sie weder definiert noch sinnvoll.
+  const log = lo > 0 && hi / lo > 8;
   const tr = (v: number) => (log ? Math.log(v) : v);
   const tLo = tr(lo), tHi = tr(hi);
   const span = tHi - tLo || 1;
@@ -91,6 +99,11 @@ export function priceSparklineSvg(
   for (const v of [lo, mid, hi]) {
     g += `<line x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="#1D2A42" stroke-width="1"/>
         <text x="${L - 5}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end">${fmt(v, dec)}</text>`;
+  }
+  // Nulllinie hervorheben, wo die Reihe das Vorzeichen wechselt — beim MVRV-Z-Score
+  // markiert sie den Punkt, an dem der Markt unter den Einstand seiner Halter fällt.
+  if (lo < 0 && hi > 0) {
+    g += `<line x1="${L}" x2="${W - R}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}" stroke="#5A667E" stroke-width="1" stroke-dasharray="3 3"/>`;
   }
   ms.forEach((m, i) => {
     if (m.endsWith('-01'))

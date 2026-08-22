@@ -50,11 +50,12 @@ export class MetricCardComponent {
   m = input.required<MetricSnapshot>();
 
   protected readonly scaleLabel = computed(() =>
-    this.m().kind === 'risk'
-      ? 'Risk · 0 = Niveau historischer Böden · 1 = Niveau historischer Tops'
-      : this.m().assetClass === 'fx'
-        ? 'Heat · 0 = historisch tiefst zum Trend · 1 = historisch höchst'
-        : 'Heat · 0 = historisch billigst zum Trend · 1 = historisch teuerst');
+    this.m().extra?.valueLabel
+      ?? (this.m().kind === 'risk'
+        ? 'Risk · 0 = Niveau historischer Böden · 1 = Niveau historischer Tops'
+        : this.m().assetClass === 'fx'
+          ? 'Heat · 0 = historisch tiefst zum Trend · 1 = historisch höchst'
+          : 'Heat · 0 = historisch billigst zum Trend · 1 = historisch teuerst'));
 
   protected readonly interpretHtml = computed<SafeHtml>(() =>
     this.sanitizer.bypassSecurityTrustHtml(this.m().interpret.replaceAll('<b>', '<b class="text-fg">')));
@@ -67,9 +68,9 @@ export class MetricCardComponent {
     const b = (s: string) => `<b class="text-fg">${s}</b>`;
     const parts: string[] = [];
     const unit = m.unit ? ' ' + m.unit : '';
-    parts.push(`<span>Kurs ${b(fmt(m.current.price, m.dec) + unit)}</span>`);
-    parts.push(`<span>${m.kind === 'risk' ? '374' : '200'}-Tage-Schnitt ${b(fmt(m.current.sma, m.dec))}</span>`);
-    if (m.assetClass !== 'fx') parts.push(`<span>vom Höchststand ${b(fmt(m.stats.vsAth, 1) + ' %')}</span>`);
+    parts.push(`<span>${m.extra?.priceLabel ?? 'Kurs'} ${b(fmt(m.current.price, m.dec) + unit)}</span>`);
+    parts.push(`<span>${m.extra?.smaDays ?? 200}-Tage-Schnitt ${b(fmt(m.current.sma, m.dec))}</span>`);
+    if (m.assetClass !== 'fx' && !m.extra?.hideAth) parts.push(`<span>vom Höchststand ${b(fmt(m.stats.vsAth, 1) + ' %')}</span>`);
     parts.push(`<span>52-Wochen-Spanne ${b(fmt(m.stats.lo52, m.dec) + '–' + fmt(m.stats.hi52, m.dec))}</span>`);
     parts.push(`<span>Stand ${b(m.current.date)}</span>`);
     return this.sanitizer.bypassSecurityTrustHtml(parts.join(' '));
@@ -77,14 +78,19 @@ export class MetricCardComponent {
 
   protected readonly chart = computed<{ svg: string; tip: TipData } | null>(() => {
     const m = this.m();
+    // Zonenlinien nur, wo die Metrik auch Zonen definiert — sonst behauptet der Chart
+    // Kauf- und Warnbereiche, die es bei Währungen ausdrücklich nicht gibt.
+    const hasZones = m.zones.length > 0 || m.hotAbove !== null;
+    const bands = hasZones ? (m.extra?.chartBands ?? [0.15, 0.85]) : null;
     return sparklineSvg(m.series.months, m.series.values, m.hex, 6,
-      m.kind === 'risk' ? 'Risk' : 'Heat', m.series.prices, m.unit);
+      m.kind === 'risk' ? 'Risk' : 'Heat', m.series.prices, m.unit, m.dec, bands);
   });
 
   /** Zusätzlicher Kursverlauf — nur wo der Heat-Wert allein den Kurs nicht erkennen lässt. */
   protected readonly priceChart = computed<{ svg: string; tip: TipData } | null>(() => {
     const m = this.m();
     if (!m.extra?.priceChart) return null;
-    return priceSparklineSvg(m.series.months, m.series.prices, m.hex, 6, 'Kurs', m.unit, m.dec);
+    return priceSparklineSvg(m.series.months, m.series.prices, m.hex, 6,
+      m.extra.priceLabel ?? 'Kurs', m.unit, m.dec);
   });
 }

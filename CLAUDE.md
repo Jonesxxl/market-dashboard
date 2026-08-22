@@ -63,14 +63,19 @@ Läuft in Node **und** im Browser, deshalb keine Node-Imports darin. `FetchConte
 
 ### Zwei Konventionen, die man kennen muss
 
-**Währungen notieren durchgehend den Dollar als Basiswährung** — eine steigende Kurve heißt ausnahmslos „stärkerer Dollar". Yahoo und Stooq liefern EUR/USD in der Gegenrichtung, deshalb hat `fxDef` einen `invert`-Parameter, der die Reihe kehrwertet (`usdeur`). Das ist kein Anzeigetrick: Der Heat-Wert wird auf der invertierten Reihe neu berechnet, denn `ln(1/P ÷ SMA200(1/P))` ist nicht das negierte `ln(P ÷ SMA200(P))`.
+**Währungen notieren den Dollar als Basiswährung** — eine steigende Kurve heißt bei den Dollar-Paaren „stärkerer Dollar". Yahoo und Stooq liefern EUR/USD in der Gegenrichtung, deshalb hat `fxDef` einen `invert`-Parameter, der die Reihe kehrwertet (`usdeur`). Das ist kein Anzeigetrick: Der Heat-Wert wird auf der invertierten Reihe neu berechnet, denn `ln(1/P ÷ SMA200(1/P))` ist nicht das negierte `ln(P ÷ SMA200(P))`. **Einzige Ausnahme ist `chfeur`**, ein Kreuzpaar ohne Dollar (Euro je Franken) — beim Ergänzen weiterer Kreuzpaare den Seitentext mitziehen, sonst behauptet er eine Leserichtung, die nicht mehr für alle gilt.
+
+**Zonenlinien nur, wo es Zonen gibt.** `sparklineSvg` zeichnet die gestrichelten Linien bei 0,15/0,85 samt Beschriftung „Kauf-/Warnzone" nur, wenn die Metrik `zones` oder `hotAbove` gesetzt hat. Währungen haben beides nicht — dort wären sie eine Behauptung, die der Seitentext ausdrücklich verneint. Den Schalter setzt `metric-card.component.ts` aus der Metrik selbst, nicht die Aufrufstelle.
 
 **Körbe skalieren ihren Index auf 100 $.** `dai-basket-heat` ist ein gleichgewichteter Index ohne eigenen Marktpreis; `fetch` multipliziert die auf 1 normierte Reihe mit 100, damit ein lesbarer Dollar-Verlauf entsteht. Der Heat-Wert ändert sich dadurch nicht, weil `ln(kP / kSMA) = ln(P / SMA)`. Wer die Skalierung anfasst, ändert also nur die Anzeige — aber `stats` (52-Wochen-Spanne, Abstand zum Höchststand) hängt mit dran. Der Kurschart wird über `extra.priceChart` aktiviert, der erklärende Text darunter über `extra.priceNote`. Achtung: `r.dates[0]` ist dort **nicht** das Normierungsdatum, sondern liegt 200 Handelstage später — der SMA200 braucht diesen Vorlauf.
 
-### Zwei Metrik-Arten, beide auf 0…1 normiert
+### Metrik-Arten — alle auf 0…1 normiert
 
 - **`heat`** (Metalle, Aktien, FX, Baskets): historisches Perzentil von `ln(Preis / SMA200)`. `0.10` heißt: nur an 10 % aller Tage war das Asset günstiger zu seinem Trend.
-- **`risk`** (BTC, ETH): min-max-normiertes `ln(Preis/SMA374) × Tagesindex^0.395`, 0 = Bodenniveau, 1 = Topniveau.
+- **`risk`** (BTC, ETH): min-max-normiertes `ln(Preis/SMA_W) × Tagesindex^exp`, 0 = Bodenniveau, 1 = Topniveau. `W`, `exp` und die Normierungsgrenzen stehen je Asset in `RISK_CONSTANTS`.
+- **Fertige Kennzahlen** (`btc-mvrv-z`): `computeIndicator` in `math.ts` nimmt eine Reihe, die bereits eine Kennzahl ist, behält den Rohwert als `price` und setzt `value` auf dessen historisches Perzentil. Trägt `kind: 'heat'`, weil sich Rail und Zonen genauso verhalten. **Anders als `computeHeat` wird nichts logarithmiert — negative Werte sind zulässig.** Für die Anzeige gibt es vier optionale Schalter in `extra`: `priceLabel` (ersetzt „Kurs" in der Statistikzeile und im Chart), `valueLabel` (Erklärzeile neben dem großen Wert), `hideAth` (blendet „vom Höchststand" aus) und `priceChart`/`priceNote`.
+
+**MVRV-Z-Score:** `(Börsenwert − Realized Value) ÷ Standardabweichung(Börsenwert)`, Standardabweichung **expandierend** über die bis dahin bekannte Historie — eine feste über die Gesamthistorie ergäbe eine völlig andere Reihe. Coin Metrics hat keine Realized-Cap-Spalte, sie folgt aber exakt aus `CapMrktCurUSD ÷ CapMVRVCur`. Die Community-CSV hängt rund zweieinhalb Monate zurück, deshalb ergänzt `bitcoin-data.com` die jüngsten Tage; über 1382 gemeinsame Tage beträgt die mittlere Abweichung 0,009, die Reihen sind also identisch skaliert und dürfen zusammengesetzt werden. Die ersten `MVRV_WARMUP = 365` Tage entfallen, weil die Standardabweichung aus wenigen Anfangstagen Werte über 30 erzeugt.
 
 Die Normierungskonstanten in `RISK_CONSTANTS` (`math.ts`) sind **eingefroren** (v1, fixiert 2026-07-19). Das ist Absicht: Sonst würde ein neues Extrem die gesamte Historie rückwirkend reskalieren (Repainting). Diese Werte nicht neu berechnen, ohne die Versionierung mitzuziehen.
 
