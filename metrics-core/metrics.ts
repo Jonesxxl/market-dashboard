@@ -39,12 +39,16 @@ const crypto: MetricDefinition[] = [
   {
     id: 'btc-risk', label: 'Bitcoin', sym: 'BTC', assetClass: 'crypto', kind: 'risk',
     unit: '$', dec: 0, hex: '#E8963C',
+    /* Schwellen der v2-Kalibrierung. Abgeleitet, nicht geraten: Die obere Stufe liegt auf
+       der gestrichelten Kauflinie (0,30 — trifft 17,1 % aller Tage), die beiden unteren
+       bilden dieselbe Kaskadenform wie unter v1 nach (4,6 % und 1,1 % gegenüber früher
+       10 %, 3,5 % und 0,8 %). */
     zones: [
-      { label: 'Basisrate', text: '< 0.20', below: 0.20 },
-      { label: 'Rate erhöhen', text: '< 0.10', below: 0.10 },
-      { label: 'Kapitulation', text: '< 0.05', below: 0.05 },
+      { label: 'Basisrate', text: '< 0.30', below: 0.30 },
+      { label: 'Rate erhöhen', text: '< 0.20', below: 0.20 },
+      { label: 'Kapitulation', text: '< 0.15', below: 0.15 },
     ],
-    hotAbove: null,
+    hotAbove: 0.70,
     fetch: ctx => fetchCrypto('btc', 'bitcoin', 'BTC-USD', ctx),
     compute: rows => computeRisk(rows, 'btc'),
     interpret: r => riskInterpret('BTC', r),
@@ -63,12 +67,15 @@ const crypto: MetricDefinition[] = [
   {
     id: 'eth-risk', label: 'Ethereum', sym: 'ETH', assetClass: 'crypto', kind: 'risk',
     unit: '$', dec: 0, hex: '#8A7BF0',
+    /* Ethereum steht weiter auf der v1-Kalibrierung — ohne Referenzpunkte wäre jede
+       Neuberechnung geraten. Angeglichen ist nur die obere Stufe, damit sie wie bei
+       Bitcoin auf der gestrichelten Kauflinie sitzt. */
     zones: [
-      { label: 'Kleine Tranchen', text: '< 0.25', below: 0.25 },
+      { label: 'Kleine Tranchen', text: '< 0.30', below: 0.30 },
       { label: 'Rate erhöhen', text: '< 0.10', below: 0.10 },
       { label: 'Kapitulation', text: '< 0.05', below: 0.05 },
     ],
-    hotAbove: null,
+    hotAbove: 0.70,
     fetch: ctx => fetchCrypto('eth', 'ethereum', 'ETH-USD', ctx),
     compute: rows => computeRisk(rows, 'eth'),
     interpret: r => riskInterpret('ETH', r),
