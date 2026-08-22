@@ -228,6 +228,9 @@ const fxDef = (id: string, label: string, sym: string, hex: string, y: string, s
   },
   compute: rows => computeHeat(rows),
   interpret: r => fxInterpret(up, down, r, r.dates[0].slice(0, 4)),
+  // Der Heat-Wert allein zeigt nur, wie ungewöhnlich der Stand ist — nicht, wo der Kurs
+  // steht. Bei Währungen ist genau das die Frage, deshalb hier immer der Kursverlauf dazu.
+  extra: () => ({ priceChart: true }),
 });
 const fx: MetricDefinition[] = [
   fxDef('dxy', 'Dollar-Index', 'DXY', '#5FA8F5', 'DX-Y.NYB', '^dxy', 1,
@@ -245,6 +248,11 @@ const fx: MetricDefinition[] = [
   fxDef('usdghs', 'US-Dollar / Ghana Cedi', 'USD/GHS', '#7FD0C9', 'GHS=X', 'usdghs', 2,
     'Der Cedi verliert an Wert — bei Frontier-Währungen meist Inflations- und Schuldensignal.',
     'Der Cedi stabilisiert sich gegen den Dollar.'),
+  // Einziges Kreuzpaar ohne Dollar: Wie viele Euro kostet ein Franken. Steigt die Kurve,
+  // ist der Franken stark — die Dollar-Leserichtung der übrigen Paare gilt hier also nicht.
+  fxDef('chfeur', 'Schweizer Franken / Euro', 'CHF/EUR', '#B8C4D4', 'CHFEUR=X', 'chfeur', 4,
+    'Der Franken ist stark zum Euro — Schweizer Waren und Anlagen verteuern sich aus Euro-Sicht.',
+    'Der Franken gibt gegenüber dem Euro nach — für den Franken historisch die seltenere Richtung.'),
 ];
 
 /** Die Registry: Snapshot-Builder, Report und Generator iterieren hierüber. */

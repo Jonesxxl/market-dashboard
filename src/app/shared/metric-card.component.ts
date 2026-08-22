@@ -78,8 +78,11 @@ export class MetricCardComponent {
 
   protected readonly chart = computed<{ svg: string; tip: TipData } | null>(() => {
     const m = this.m();
+    // Zonenlinien nur, wo die Metrik auch Zonen definiert — sonst behauptet der Chart
+    // Kauf- und Warnbereiche, die es bei Währungen ausdrücklich nicht gibt.
+    const hasZones = m.zones.length > 0 || m.hotAbove !== null;
     return sparklineSvg(m.series.months, m.series.values, m.hex, 6,
-      m.kind === 'risk' ? 'Risk' : 'Heat', m.series.prices, m.unit);
+      m.kind === 'risk' ? 'Risk' : 'Heat', m.series.prices, m.unit, m.dec, hasZones);
   });
 
   /** Zusätzlicher Kursverlauf — nur wo der Heat-Wert allein den Kurs nicht erkennen lässt. */

@@ -12,6 +12,7 @@ export interface TipData {
 export function sparklineSvg(
   dates: string[], vals: (number | null)[], color: string,
   years = 6, label = 'Heat', extra: number[] | null = null, unit = '',
+  dec = 2, zoneLines = true,
 ): { svg: string; tip: TipData } | null {
   const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - years);
   const cut = cutoff.toISOString().slice(0, 10);
@@ -33,8 +34,12 @@ export function sparklineSvg(
     g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="#1D2A42" stroke-width="1"/>
         <text x="${L - 5}" y="${y(v) + 3}" text-anchor="end">${t}</text>`;
   });
-  g += `<line x1="${L}" x2="${W - R}" y1="${y(0.15)}" y2="${y(0.15)}" stroke="#22C6B8" stroke-width="1" stroke-dasharray="3 4" opacity=".55"/>
+  // Nur wo die Metrik wirklich Zonen kennt. Währungen haben keine — dort wären die
+  // Linien samt Beschriftung eine Behauptung, die der Seitentext ausdrücklich verneint.
+  if (zoneLines) {
+    g += `<line x1="${L}" x2="${W - R}" y1="${y(0.15)}" y2="${y(0.15)}" stroke="#22C6B8" stroke-width="1" stroke-dasharray="3 4" opacity=".55"/>
       <line x1="${L}" x2="${W - R}" y1="${y(0.85)}" y2="${y(0.85)}" stroke="#F0533F" stroke-width="1" stroke-dasharray="3 4" opacity=".55"/>`;
+  }
   months.forEach((m, i) => {
     if (m.endsWith('-01'))
       g += `<line x1="${x(i)}" x2="${x(i)}" y1="${y(1)}" y2="${y(0)}" stroke="#1D2A42" opacity=".6"/>
@@ -45,11 +50,11 @@ export function sparklineSvg(
   g += `<path d="${d}" fill="none" stroke="${color}" stroke-width="1.8"/>
       <circle cx="${lx}" cy="${ly}" r="3.2" fill="${color}"/>
       <text x="${Math.min(lx + 5, W - R)}" y="${ly < T + 14 ? ly + 14 : ly - 6}" text-anchor="end" style="fill:${color};font-weight:600">${pts[pts.length - 1].toFixed(2)}</text>
-      <text x="${W - R}" y="${T + 2}" text-anchor="end">${label} · ${years} Jahre · gestrichelt: Kauf-/Warnzone</text>`;
+      <text x="${W - R}" y="${T + 2}" text-anchor="end">${label} · ${years} Jahre${zoneLines ? ' · gestrichelt: Kauf-/Warnzone' : ''}</text>`;
   const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" role="img" aria-label="${label}-Verlauf, letzte ${years} Jahre">${g}</svg>`;
   const tip: TipData = {
     m: months, v: pts.map(v => +v.toFixed(3)),
-    p: extra ? ex.map(v => +v.toFixed(2)) : null, l: label, u: unit,
+    p: extra ? ex.map(v => +v.toFixed(dec)) : null, l: label, u: unit,
   };
   return { svg, tip };
 }

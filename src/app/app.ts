@@ -32,7 +32,7 @@ export const routes: Routes = [
   },
   {
     path: 'waehrungen', title: 'Währungen — Dollar-Index und Paare',
-    data: { description: 'Dollar-Index, USD/EUR, USD/CHF, USD/CNY und USD/GHS — durchgehend mit dem Dollar als Basiswährung, eine steigende Kurve bedeutet also immer einen stärkeren Dollar. Extreme markieren gedehnte Bewegungen.' },
+    data: { description: 'Dollar-Index, USD/EUR, USD/CHF, USD/CNY, USD/GHS und das Kreuzpaar CHF/EUR — je Karte der Heat-Wert und der tatsächliche Kursverlauf. Bei den Dollar-Paaren bedeutet eine steigende Kurve immer einen stärkeren Dollar.' },
     loadComponent: () => import('./pages/fx.component').then(m => m.FxComponent),
   },
   {

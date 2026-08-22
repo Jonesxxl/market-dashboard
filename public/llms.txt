@@ -14,7 +14,8 @@
 
 ## Wichtige Konventionen
 
-- **Währungen notieren durchgehend den US-Dollar als Basiswährung.** Eine steigende Kurve bedeutet ausnahmslos einen stärkeren Dollar. Das sonst übliche EUR/USD wird deshalb als USD/EUR dargestellt.
+- **Die Währungspaare notieren den US-Dollar als Basiswährung.** Eine steigende Kurve bedeutet dort einen stärkeren Dollar. Das sonst übliche EUR/USD wird deshalb als USD/EUR dargestellt. Einzige Ausnahme ist CHF/EUR, ein Kreuzpaar ohne Dollar: Es gibt an, wie viele Euro ein Franken kostet, eine steigende Kurve bedeutet dort einen starken Franken.
+- **Jede Währungskarte zeigt zwei Verläufe**: den Heat-Wert (Abweichung vom 200-Tage-Trend als Perzentil) und darunter den tatsächlichen Kursverlauf des Paares. Zonenlinien für Kauf- und Warnbereiche werden bei Währungen bewusst nicht gezeichnet, weil es dort keine solchen Zonen gibt.
 - **Der Digital-Asset-Basket ist ein gleichgewichteter Index ohne eigenen Marktpreis.** Sein Dollar-Verlauf zeigt den Wert von 100 $, die am ersten Tag der gemeinsamen Historie gleichgewichtet auf die Korbmitglieder verteilt wurden.
 - Alle Zahlen sind statistische Auswertungen der Vergangenheit. Sie enthalten keine Prognose und keine Empfehlung.
 
@@ -24,7 +25,7 @@
 - [Krypto](https://chipper-cucurucho-5d0a49.netlify.app/krypto): Risk-Werte für Bitcoin und Ethereum, MVRV-Z-Score für Bitcoin, Kursniveaus je Risk-Zone, Digital-Asset-Basket, Vergleich der Bärenmärkte 2017/18 und 2025/26.
 - [Edelmetalle](https://chipper-cucurucho-5d0a49.netlify.app/metalle): Gold, Silber, Palladium sowie Gold/Silber- und Palladium/Gold-Verhältnis.
 - [Nasdaq und KI](https://chipper-cucurucho-5d0a49.netlify.app/nasdaq-ki): Nasdaq-100-Heat, KI-Basket, Marktkonzentration, Kredit-Risikoappetit, KI-Blasen-Score.
-- [Währungen](https://chipper-cucurucho-5d0a49.netlify.app/waehrungen): Dollar-Index, USD/EUR, USD/CHF, USD/CNY, USD/GHS.
+- [Währungen](https://chipper-cucurucho-5d0a49.netlify.app/waehrungen): Dollar-Index, USD/EUR, USD/CHF, USD/CNY, USD/GHS sowie das Kreuzpaar CHF/EUR.
 - [Generator](https://chipper-cucurucho-5d0a49.netlify.app/generator): leitet aus den aktuellen Signalen eine Gewichtung für Sparrate oder Depot ab. Rechnet vollständig im Browser.
 - [Technisches Handbuch](https://chipper-cucurucho-5d0a49.netlify.app/docs.html): Formeln, Datenfluss, Signalzonen und die Grenzen des Verfahrens.
 
