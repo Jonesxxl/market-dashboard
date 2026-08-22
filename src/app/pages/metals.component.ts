@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { ChartComponent, RailComponent } from '../shared/ui';
+import { ChartComponent, MetricSkeletonComponent, RailComponent } from '../shared/ui';
 import { MetricCardComponent } from '../shared/metric-card.component';
 import { sparklineSvg, TipData } from '../core/charts';
 import { fmt, MarketDataService, RatioSnapshot } from '../core/market-data.service';
@@ -13,15 +13,19 @@ interface RatioVm extends RatioSnapshot {
 @Component({
   selector: 'app-metals',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ChartComponent, RailComponent, MetricCardComponent],
+  imports: [ChartComponent, RailComponent, MetricCardComponent, MetricSkeletonComponent],
   template: `
-    @for (m of metalMetrics(); track m.id) { <app-metric-card [m]="m"/> }
+    @if (data.loading() && !metalMetrics().length) {
+      <app-metric-skeleton [count]="3"/>
+    } @else {
+      @for (m of metalMetrics(); track m.id) { <app-metric-card [m]="m"/> }
       @empty {
         <div class="bg-panel border border-dashed border-line rounded-2xl p-6 mb-4 text-muted text-[13.5px]">
           Für diesen Bereich liegen noch keine Daten im Snapshot — der tägliche Berechnungslauf
           (GitHub Action) füllt ihn beim nächsten erfolgreichen Durchgang automatisch.
         </div>
       }
+    }
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       @for (r of ratios(); track r.id) {
         <div class="bg-panel border border-line rounded-2xl p-6">
@@ -39,7 +43,7 @@ interface RatioVm extends RatioSnapshot {
   `,
 })
 export class MetalsComponent {
-  private data = inject(MarketDataService);
+  protected data = inject(MarketDataService);
   private sanitizer = inject(DomSanitizer);
   protected readonly fmt = fmt;
 

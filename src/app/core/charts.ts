@@ -8,6 +8,15 @@ export interface TipData {
   s?: number; hh?: number; ht?: number; hb?: number;
 }
 
+/** Länge des Streckenzugs in Nutzerkoordinaten. Wird für stroke-dasharray gebraucht:
+ *  Nur mit der echten Länge läuft die Einzeichnung gleichmäßig durch statt am Ende
+ *  stehenzubleiben (oder abgeschnitten zu wirken). */
+function polylineLength(n: number, x: (i: number) => number, y: (i: number) => number): number {
+  let len = 0;
+  for (let i = 1; i < n; i++) len += Math.hypot(x(i) - x(i - 1), y(i) - y(i - 1));
+  return Math.ceil(len);
+}
+
 /** Verlaufschart (monatlich, mit Achsenskala, Schwellenlinien, Endwert). */
 export function sparklineSvg(
   dates: string[], vals: (number | null)[], color: string,
@@ -48,9 +57,10 @@ export function sparklineSvg(
   });
   const d = pts.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
   const lx = x(pts.length - 1), ly = y(pts[pts.length - 1]);
-  g += `<path d="${d}" fill="none" stroke="${color}" stroke-width="1.8"/>
-      <circle cx="${lx}" cy="${ly}" r="3.2" fill="${color}"/>
-      <text x="${Math.min(lx + 5, W - R)}" y="${ly < T + 14 ? ly + 14 : ly - 6}" text-anchor="end" style="fill:${color};font-weight:600">${pts[pts.length - 1].toFixed(2)}</text>
+  const len = polylineLength(pts.length, x, i => y(pts[i]));
+  g += `<path class="draw" style="--len:${len}" d="${d}" fill="none" stroke="${color}" stroke-width="1.8"/>
+      <circle class="tip-dot" cx="${lx}" cy="${ly}" r="3.2" fill="${color}"/>
+      <text class="tip-dot" x="${Math.min(lx + 5, W - R)}" y="${ly < T + 14 ? ly + 14 : ly - 6}" text-anchor="end" style="fill:${color};font-weight:600">${pts[pts.length - 1].toFixed(2)}</text>
       <text x="${W - R}" y="${T + 2}" text-anchor="end">${label} · ${years} Jahre${bands ? ` · gestrichelt: Kauf ${bands[0].toFixed(2).replace('.', ',')} / Warnung ${bands[1].toFixed(2).replace('.', ',')}` : ''}</text>`;
   const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" role="img" aria-label="${label}-Verlauf, letzte ${years} Jahre">${g}</svg>`;
   const tip: TipData = {
@@ -113,9 +123,10 @@ export function priceSparklineSvg(
 
   const d = pts.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
   const lx = x(pts.length - 1), ly = y(pts[pts.length - 1]);
-  g += `<path d="${d}" fill="none" stroke="${color}" stroke-width="1.8"/>
-      <circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="3.2" fill="${color}"/>
-      <text x="${Math.min(lx + 5, W - R)}" y="${ly < T + 14 ? ly + 14 : ly - 6}" text-anchor="end" style="fill:${color};font-weight:600">${fmt(pts[pts.length - 1], dec)}</text>
+  const len = polylineLength(pts.length, x, i => y(pts[i]));
+  g += `<path class="draw" style="--len:${len}" d="${d}" fill="none" stroke="${color}" stroke-width="1.8"/>
+      <circle class="tip-dot" cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="3.2" fill="${color}"/>
+      <text class="tip-dot" x="${Math.min(lx + 5, W - R)}" y="${ly < T + 14 ? ly + 14 : ly - 6}" text-anchor="end" style="fill:${color};font-weight:600">${fmt(pts[pts.length - 1], dec)}</text>
       <text x="${W - R}" y="${T + 2}" text-anchor="end">${label} · ${years} Jahre${log ? ' · log. Skala' : ''}</text>`;
 
   const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" role="img" aria-label="${label}-Verlauf, letzte ${years} Jahre">${g}</svg>`;
