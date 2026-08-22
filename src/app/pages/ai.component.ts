@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { RailComponent } from '../shared/ui';
+import { MetricSkeletonComponent, RailComponent } from '../shared/ui';
 import { MetricCardComponent } from '../shared/metric-card.component';
 import { MarketDataService } from '../core/market-data.service';
 
 @Component({
   selector: 'app-ai',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RailComponent, MetricCardComponent],
+  imports: [RailComponent, MetricCardComponent, MetricSkeletonComponent],
   template: `
     @if (score(); as sc) {
       <div class="bg-panel border border-line rounded-2xl p-6 mb-4">
@@ -25,17 +25,21 @@ import { MarketDataService } from '../core/market-data.service';
         <app-rail [value]="sc.score"/>
       </div>
     }
-    @for (m of aiMetrics(); track m.id) { <app-metric-card [m]="m"/> }
+    @if (data.loading() && !aiMetrics().length) {
+      <app-metric-skeleton [count]="4"/>
+    } @else {
+      @for (m of aiMetrics(); track m.id) { <app-metric-card [m]="m"/> }
       @empty {
         <div class="bg-panel border border-dashed border-line rounded-2xl p-6 mb-4 text-muted text-[13.5px]">
           Für diesen Bereich liegen noch keine Daten im Snapshot — der tägliche Berechnungslauf
           (GitHub Action) füllt ihn beim nächsten erfolgreichen Durchgang automatisch.
         </div>
       }
+    }
   `,
 })
 export class AiComponent {
-  private data = inject(MarketDataService);
+  protected data = inject(MarketDataService);
   private sanitizer = inject(DomSanitizer);
 
   protected readonly aiMetrics = computed(() =>
