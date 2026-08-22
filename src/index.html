@@ -42,7 +42,7 @@
         "@type": "Dataset",
         "@id": "https://chipper-cucurucho-5d0a49.netlify.app/#dataset",
         "name": "Macro Risk Dashboard — tägliche Bewertungskennzahlen",
-        "description": "Täglich berechnete Kennzahlen für Kryptowährungen, Edelmetalle, den Nasdaq 100 und Währungen. Heat ist das historische Perzentil von ln(Kurs/SMA200); Risk ist min-max-normiertes ln(Kurs/SMA374) mal Tagesindex hoch 0,395 für Bitcoin und Ethereum. Enthält je Metrik aktuellen Wert, Kurs, gleitenden Durchschnitt, Monatsreihen, 52-Wochen-Spanne und eine deutschsprachige Deutung.",
+        "description": "Täglich berechnete Kennzahlen für Kryptowährungen, Edelmetalle, den Nasdaq 100 und Währungen. Heat ist das historische Perzentil von ln(Kurs/SMA200); Risk ist min-max-normiertes ln(Kurs/gleitender Durchschnitt) mal Tagesindex hoch einem Exponenten, je Asset kalibriert (Bitcoin: 340 Tage, Exponent 0,2). Enthält je Metrik aktuellen Wert, Kurs, gleitenden Durchschnitt, Monatsreihen, 52-Wochen-Spanne und eine deutschsprachige Deutung.",
         "inLanguage": "de-DE",
         "isAccessibleForFree": true,
         "license": "https://chipper-cucurucho-5d0a49.netlify.app/impressum",
@@ -72,7 +72,7 @@
             "name": "Was bedeutet der Risk-Wert bei Bitcoin und Ethereum?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Risk ist min-max-normiertes ln(Kurs geteilt durch den 374-Tage-Durchschnitt) mal Tagesindex hoch 0,395. Die Zeitgewichtung gleicht aus, dass die Zyklusausschläge von Zyklus zu Zyklus kleiner werden. 0 entspricht dem Niveau historischer Zyklusböden, 1 dem Niveau historischer Zyklustops."
+              "text": "Risk ist min-max-normiertes ln(Kurs geteilt durch einen mehrjährigen gleitenden Durchschnitt) mal Tagesindex hoch einem Exponenten. Fenster, Exponent und Normierung sind je Asset kalibriert; für Bitcoin sind es 340 Tage und Exponent 0,2. Die Zeitgewichtung gleicht aus, dass die Zyklusausschläge von Zyklus zu Zyklus kleiner werden. 0 entspricht dem Niveau historischer Zyklusböden, 1 dem Niveau historischer Zyklustops."
             }
           },
           {

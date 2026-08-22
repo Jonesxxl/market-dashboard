@@ -75,7 +75,7 @@ interface BearVm {
               </tbody>
             </table>
             <p class="font-mono text-[11.5px] text-faint mt-2">Lesehilfe: Fällt der Kurs auf das Niveau in der Mitte,
-              erreicht die Risk-Metrik den Wert links. Die Niveaus verschieben sich langsam mit dem 374-Tage-Schnitt.</p>
+              erreicht die Risk-Metrik den Wert links. Die Niveaus verschieben sich langsam mit dem gleitenden Durchschnitt.</p>
           </div>
         }
       }

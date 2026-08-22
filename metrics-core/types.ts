@@ -41,6 +41,11 @@ export interface MetricSnapshot {
     valueLabel?: string;
     /** „vom Höchststand" ausblenden, wo der Abstand zum Allzeithoch nichts aussagt. */
     hideAth?: boolean;
+    /** Fenster des gleitenden Durchschnitts für die Statistikzeile — je Asset kalibriert. */
+    smaDays?: number;
+    /** Gestrichelte Orientierungslinien im Verlaufschart [Kauf, Warnung].
+     *  Ohne Angabe 0,15/0,85 wie bei allen Heat-Metriken. */
+    chartBands?: [number, number];
   };
 }
 

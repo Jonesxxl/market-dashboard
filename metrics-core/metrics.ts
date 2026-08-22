@@ -1,6 +1,6 @@
 /** metrics-core · Registry. Eine neue Metrik = ein neuer Eintrag hier — Snapshot, Report und
  *  Generator sehen sie automatisch. */
-import { computeHeat, computeIndicator, computeRisk, defaultSignal, fmt } from './math';
+import { computeHeat, computeIndicator, computeRisk, defaultSignal, fmt, RISK_CONSTANTS } from './math';
 import { fetchBtcMvrvZ, fetchCrypto, fetchCryptoBasket, fetchMarket } from './sources';
 import { MetricDefinition, MetricResult, Row } from './types';
 
@@ -50,9 +50,13 @@ const crypto: MetricDefinition[] = [
     interpret: r => riskInterpret('BTC', r),
     extra: r => ({
       riskLevels: RISK_LEVELS.map(lv => ({ r: lv, price: Math.round(r.priceForValue!(lv)) })),
+      smaDays: RISK_CONSTANTS['btc'].W,
+      chartBands: [0.30, 0.70],
+      // Aus der v2-Kalibrierung neu bestimmt. Die Böden 2015, 2018 und 2022 liegen mit
+      // 0.099/0.110/0.091 so dicht beieinander, dass getrennte Marken sich überlappen.
       ghosts: [
-        { r: 0.00, t: 'Boden 18' }, { r: 0.04, t: 'Boden 15/22' },
-        { r: 0.48, t: 'ATH 25' }, { r: 0.93, t: 'ATH 13' },
+        { r: 0.10, t: 'Böden 15/18/22' },
+        { r: 0.56, t: 'ATH 25' }, { r: 0.88, t: 'ATH 21' },
       ],
     }),
   },
@@ -70,6 +74,8 @@ const crypto: MetricDefinition[] = [
     interpret: r => riskInterpret('ETH', r),
     extra: r => ({
       riskLevels: RISK_LEVELS.map(lv => ({ r: lv, price: Math.round(r.priceForValue!(lv)) })),
+      smaDays: RISK_CONSTANTS['eth'].W,
+      chartBands: [0.30, 0.70],
       ghosts: [
         { r: 0.00, t: 'Boden 18' }, { r: 0.09, t: 'Boden 22' },
         { r: 0.71, t: 'ATH 25' }, { r: 0.88, t: 'ATH 18' },

@@ -69,7 +69,7 @@ export class MetricCardComponent {
     const parts: string[] = [];
     const unit = m.unit ? ' ' + m.unit : '';
     parts.push(`<span>${m.extra?.priceLabel ?? 'Kurs'} ${b(fmt(m.current.price, m.dec) + unit)}</span>`);
-    parts.push(`<span>${m.kind === 'risk' ? '374' : '200'}-Tage-Schnitt ${b(fmt(m.current.sma, m.dec))}</span>`);
+    parts.push(`<span>${m.extra?.smaDays ?? 200}-Tage-Schnitt ${b(fmt(m.current.sma, m.dec))}</span>`);
     if (m.assetClass !== 'fx' && !m.extra?.hideAth) parts.push(`<span>vom Höchststand ${b(fmt(m.stats.vsAth, 1) + ' %')}</span>`);
     parts.push(`<span>52-Wochen-Spanne ${b(fmt(m.stats.lo52, m.dec) + '–' + fmt(m.stats.hi52, m.dec))}</span>`);
     parts.push(`<span>Stand ${b(m.current.date)}</span>`);
@@ -81,8 +81,9 @@ export class MetricCardComponent {
     // Zonenlinien nur, wo die Metrik auch Zonen definiert — sonst behauptet der Chart
     // Kauf- und Warnbereiche, die es bei Währungen ausdrücklich nicht gibt.
     const hasZones = m.zones.length > 0 || m.hotAbove !== null;
+    const bands = hasZones ? (m.extra?.chartBands ?? [0.15, 0.85]) : null;
     return sparklineSvg(m.series.months, m.series.values, m.hex, 6,
-      m.kind === 'risk' ? 'Risk' : 'Heat', m.series.prices, m.unit, m.dec, hasZones);
+      m.kind === 'risk' ? 'Risk' : 'Heat', m.series.prices, m.unit, m.dec, bands);
   });
 
   /** Zusätzlicher Kursverlauf — nur wo der Heat-Wert allein den Kurs nicht erkennen lässt. */
