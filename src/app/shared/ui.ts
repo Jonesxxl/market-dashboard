@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, Directive, ElementRef, HostListener, computed, inject, input,
+import { ChangeDetectionStrategy, Component, DestroyRef, Directive, ElementRef, HostListener, computed,
+  inject, input,
 } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { TipData } from '../core/charts';
@@ -67,6 +68,26 @@ export class ChartTipDirective {
   }
 }
 
+/** Setzt `in-view`, sobald das Element zum ersten Mal in den Sichtbereich kommt, und
+ *  hört danach auf zu beobachten. Die Einlauf-Animationen hängen daran: Ohne das laufen
+ *  alle Karten gleichzeitig beim Laden ab, und wer nach unten scrollt, findet nur noch
+ *  Endzustände vor.
+ *
+ *  Ohne die Klasse rendert alles im Endzustand — die Animationen dürfen nie darüber
+ *  entscheiden, ob etwas überhaupt sichtbar ist. */
+function revealOnEnter(el: HTMLElement, destroyRef: DestroyRef): void {
+  if (typeof IntersectionObserver !== 'function') { el.classList.add('in-view'); return; }
+  const io = new IntersectionObserver(entries => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      el.classList.add('in-view');
+      io.disconnect();
+    }
+  }, { rootMargin: '0px 0px -60px 0px' });   // erst zünden, wenn ein Stück wirklich zu sehen ist
+  io.observe(el);
+  destroyRef.onDestroy(() => io.disconnect());
+}
+
 /* ===== SVG-Chart-Wrapper ===== */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -80,6 +101,10 @@ export class ChartComponent {
   private sanitizer = inject(DomSanitizer);
   svg = input.required<string>();
   tip = input.required<TipData>();
+
+  constructor() {
+    revealOnEnter(inject<ElementRef<HTMLElement>>(ElementRef).nativeElement, inject(DestroyRef));
+  }
   protected readonly safeSvg = computed<SafeHtml>(() => this.sanitizer.bypassSecurityTrustHtml(this.svg()));
 }
 
@@ -100,12 +125,12 @@ export class ChartComponent {
           <em class="absolute -top-[15px] left-1/2 -translate-x-1/2 not-italic font-mono text-[9.5px] text-muted whitespace-nowrap">{{ gh.t }}</em>
         </div>
       }
-      <div class="absolute top-[9px] w-[3px] h-[33px] bg-fg rounded-sm transition-[left] duration-700"
+      <div class="rail-marker absolute top-[9px] w-[3px] h-[33px] bg-fg rounded-sm transition-[left] duration-700"
            style="box-shadow:0 0 10px rgba(255,255,255,.35)"
            [style.left.%]="Math.min(99.7, value() * 100)"></div>
     </div>
     @if (zones().length || hotAbove() !== null) {
-      <div class="flex gap-2 flex-wrap mt-3">
+      <div class="flex gap-2 flex-wrap mt-3 rail-chips">
         @for (z of zones(); track z[0]) {
           <div class="font-mono text-[11px] px-2.5 py-1 rounded-lg border"
                [class.border-lo]="value() < z[2]" [class.text-lo]="value() < z[2]"
@@ -131,6 +156,51 @@ export class RailComponent {
   hotAbove = input<number | null>(null);
   protected readonly ticks = [0, 0.25, 0.5, 0.75, 1];
   protected readonly Math = Math;
+
+  constructor() {
+    revealOnEnter(inject<ElementRef<HTMLElement>>(ElementRef).nativeElement, inject(DestroyRef));
+  }
+}
+
+/* ===== Ladeplatzhalter =====
+ * Hält die Geometrie einer Metrik-Karte, solange der erste Snapshot unterwegs ist. Ohne ihn
+ * greift auf den Seiten der @empty-Zweig und die Seite behauptet währenddessen, es lägen
+ * keine Daten vor — und springt beim Eintreffen in der Höhe.
+ *
+ * Nur beim Erstaufruf: Beim Neuladen liegen bereits Werte vor, die durch Balken zu ersetzen
+ * wäre ein Rückschritt. Dort meldet der Statusbalken im Kopf den Ladevorgang. */
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'app-metric-skeleton',
+  template: `
+    @for (i of rows(); track i) {
+      <div class="bg-panel border border-line rounded-2xl p-6 mb-4" aria-hidden="true">
+        <!-- Kopfzeile: Titel links, Statistikzeile rechts -->
+        <div class="flex justify-between items-baseline gap-2.5 mb-3">
+          <div class="sk h-[15px] w-[170px]"></div>
+          <div class="sk h-[12px] w-[210px] max-w-[45%]"></div>
+        </div>
+        <!-- großer Wert -->
+        <div class="sk h-[34px] w-[104px] my-1"></div>
+        <!-- Deutungstext -->
+        <div class="sk h-[11px] w-full mt-3"></div>
+        <div class="sk h-[11px] w-3/5 mt-2"></div>
+        <!-- Farbband und Zonen-Chips -->
+        <div class="sk h-[11px] w-full rounded-md mt-7"></div>
+        <div class="flex gap-2 mt-5">
+          <div class="sk h-[25px] w-[118px] rounded-lg"></div>
+          <div class="sk h-[25px] w-[132px] rounded-lg"></div>
+        </div>
+        <!-- Chart: exakt das Seitenverhältnis der viewBox, damit die Höhe mitwächst -->
+        <div class="sk w-full rounded-lg mt-4 aspect-[460/118]"></div>
+      </div>
+    }
+  `,
+})
+export class MetricSkeletonComponent {
+  /** Wie viele Karten die Seite üblicherweise zeigt — damit die Höhe grob stimmt. */
+  count = input(3);
+  protected readonly rows = computed(() => Array.from({ length: this.count() }, (_, i) => i));
 }
 
 /* ===== Ladeplatzhalter =====

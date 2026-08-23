@@ -67,19 +67,21 @@ body {
   box-shadow: 0 4px 16px rgba(0,0,0,.55); white-space: nowrap; }
 
 /* Chart-Einzeichnung: Die Linie läuft von links nach rechts durch, Endpunkt und Endwert
-   setzen sich danach. Bewusst nur unter `no-preference` — läge stroke-dashoffset außerhalb
+   setzen sich danach. Die Animationen hängen an `.in-view`, das ein IntersectionObserver
+   setzt — sonst laufen alle Karten beim Laden gleichzeitig ab und wer scrollt, sieht nur
+   noch Endzustände. Bewusst nur unter `no-preference` — läge stroke-dashoffset außerhalb
    der Abfrage, bliebe es bei abgeschalteter Bewegung stehen und die Linie wäre unsichtbar. */
 @media (prefers-reduced-motion: no-preference) {
-  .spark path.draw {
+  .in-view .spark path.draw {
     stroke-dasharray: var(--len);
     stroke-dashoffset: var(--len);
     animation: spark-draw 900ms cubic-bezier(.4, 0, .2, 1) forwards;
   }
-  .spark circle.tip-dot {
+  .in-view .spark circle.tip-dot {
     transform-box: fill-box; transform-origin: center;
     animation: spark-dot 260ms cubic-bezier(.22, 1, .36, 1) 760ms both;
   }
-  .spark text.tip-dot { animation: spark-fade 260ms ease-out 760ms both; }
+  .in-view .spark text.tip-dot { animation: spark-fade 260ms ease-out 760ms both; }
 }
 @keyframes spark-draw { to { stroke-dashoffset: 0; } }
 @keyframes spark-dot { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
