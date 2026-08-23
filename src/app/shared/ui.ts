@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, Directive, ElementRef, HostListener, computed, inject, input,
+import { ChangeDetectionStrategy, Component, DestroyRef, Directive, ElementRef, HostListener, computed,
+  inject, input,
 } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { TipData } from '../core/charts';
@@ -67,6 +68,26 @@ export class ChartTipDirective {
   }
 }
 
+/** Setzt `in-view`, sobald das Element zum ersten Mal in den Sichtbereich kommt, und
+ *  hört danach auf zu beobachten. Die Einlauf-Animationen hängen daran: Ohne das laufen
+ *  alle Karten gleichzeitig beim Laden ab, und wer nach unten scrollt, findet nur noch
+ *  Endzustände vor.
+ *
+ *  Ohne die Klasse rendert alles im Endzustand — die Animationen dürfen nie darüber
+ *  entscheiden, ob etwas überhaupt sichtbar ist. */
+function revealOnEnter(el: HTMLElement, destroyRef: DestroyRef): void {
+  if (typeof IntersectionObserver !== 'function') { el.classList.add('in-view'); return; }
+  const io = new IntersectionObserver(entries => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      el.classList.add('in-view');
+      io.disconnect();
+    }
+  }, { rootMargin: '0px 0px -60px 0px' });   // erst zünden, wenn ein Stück wirklich zu sehen ist
+  io.observe(el);
+  destroyRef.onDestroy(() => io.disconnect());
+}
+
 /* ===== SVG-Chart-Wrapper ===== */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -80,6 +101,10 @@ export class ChartComponent {
   private sanitizer = inject(DomSanitizer);
   svg = input.required<string>();
   tip = input.required<TipData>();
+
+  constructor() {
+    revealOnEnter(inject<ElementRef<HTMLElement>>(ElementRef).nativeElement, inject(DestroyRef));
+  }
   protected readonly safeSvg = computed<SafeHtml>(() => this.sanitizer.bypassSecurityTrustHtml(this.svg()));
 }
 
@@ -131,6 +156,10 @@ export class RailComponent {
   hotAbove = input<number | null>(null);
   protected readonly ticks = [0, 0.25, 0.5, 0.75, 1];
   protected readonly Math = Math;
+
+  constructor() {
+    revealOnEnter(inject<ElementRef<HTMLElement>>(ElementRef).nativeElement, inject(DestroyRef));
+  }
 }
 
 /* ===== Ladeplatzhalter =====
