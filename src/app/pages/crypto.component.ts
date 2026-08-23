@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { ChartComponent } from '../shared/ui';
+import { ChartComponent, MetricSkeletonComponent } from '../shared/ui';
 import { MetricCardComponent } from '../shared/metric-card.component';
 import { bearChartSvg, TipData } from '../core/charts';
 import { fmt, MarketDataService } from '../core/market-data.service';
@@ -12,15 +12,19 @@ interface BearVm {
 @Component({
   selector: 'app-crypto',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ChartComponent, MetricCardComponent],
+  imports: [ChartComponent, MetricCardComponent, MetricSkeletonComponent],
   template: `
-    @for (m of cryptoMetrics(); track m.id) { <app-metric-card [m]="m"/> }
+    @if (data.loading() && !cryptoMetrics().length) {
+      <app-metric-skeleton [count]="4"/>
+    } @else {
+      @for (m of cryptoMetrics(); track m.id) { <app-metric-card [m]="m"/> }
       @empty {
         <div class="bg-panel border border-dashed border-line rounded-2xl p-6 mb-4 text-muted text-[13.5px]">
           Für diesen Bereich liegen noch keine Daten im Snapshot — der tägliche Berechnungslauf
           (GitHub Action) füllt ihn beim nächsten erfolgreichen Durchgang automatisch.
         </div>
       }
+    }
 
     @if (bear(); as b) {
       <div class="bg-panel border border-line rounded-2xl p-6 mb-4">
@@ -83,7 +87,7 @@ interface BearVm {
   `,
 })
 export class CryptoComponent {
-  private data = inject(MarketDataService);
+  protected data = inject(MarketDataService);
   protected readonly fmt = fmt;
 
   protected readonly cryptoMetrics = computed(() =>
