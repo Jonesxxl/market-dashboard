@@ -128,6 +128,14 @@ Immutable-Caching gilt nur für gehashte Artefakte (`/main-*.js`, `/chunk-*.js`,
 
 Braucht `permissions: contents: write` und pusht als `snapshot-bot` direkt auf `main`; jeder erfolgreiche Lauf löst einen Netlify-Build aus. Der Job installiert per `npm ci` (tsx kommt aus dem Lockfile, nicht per `npx -y`), prüft mit `npm run typecheck` die Typen, bevor er Daten anfasst, und rebased vor dem Push in drei Versuchen. `concurrency: snapshot` verhindert, dass zwei Läufe sich überholen.
 
+### Statische Seiten je Route — wichtig
+
+`npm run build` ist **nicht** nur `ng build`: Danach läuft `scripts/build-static-pages.ts` und schreibt für jede Route eine echte `index.html` mit Inhalt nach `dist/macro-ng/browser/<route>/`. Grund: Die Seite ist eine Client-SPA, und **GPTBot, ClaudeBot, PerplexityBot und OAI-SearchBot führen kein JavaScript aus**. Vorher sahen sie 197 Zeichen `noscript`-Text, und `/krypto` war nicht von `/metalle` zu unterscheiden — inklusive Titel und Meta-Beschreibung, die erst JavaScript setzt.
+
+Der Generator schreibt den Inhalt direkt in `<app-root>`. Angular leert das Host-Element beim Bootstrap (`selectRootElement` ohne `preserveContent`) und übernimmt danach — es ist also kein Duplikat, sondern der Zustand vor dem Start. Nachgeprüft: nach dem Booten steht kein statischer Rest mehr im DOM.
+
+**Wer `netlify.toml` oder das `build`-Skript anfasst, muss den Generator mitziehen** — läuft er nicht, fällt die Seite still auf den leeren Shell zurück und ist für KI-Suchen wieder unsichtbar. `sitemap.xml` entsteht im selben Lauf (mit `lastmod` aus dem Snapshot) und liegt deshalb **nicht** mehr in `public/`.
+
 ### SEO, auch für Sprachmodelle
 
 `public/llms.txt` fasst Methodik, Konventionen, Datenquellen und Grenzen in Textform zusammen (Format nach llmstxt.org), `public/robots.txt` gibt die gängigen KI-Crawler ausdrücklich frei. In `src/index.html` steht ein JSON-LD-Block mit `WebSite`, `Dataset` (zeigt auf `snapshot.json`) und `FAQPage`. **Der ld+json-Block ist ein Datenblock, kein ausführbares Skript — die strikte `script-src`-Direktive greift dort nicht.**

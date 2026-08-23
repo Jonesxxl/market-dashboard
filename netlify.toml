@@ -1,5 +1,6 @@
 [build]
-  command = "npm ci && npx ng build"
+  # npm run build baut die App UND erzeugt danach die statischen Seiten je Route.
+  command = "npm ci && npm run build"
   publish = "dist/macro-ng/browser"
 
 # Angular 22 verlangt Node >= 24.15.0 — ohne Pin kann ein Wechsel des Netlify-Defaults
