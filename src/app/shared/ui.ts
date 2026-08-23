@@ -100,12 +100,12 @@ export class ChartComponent {
           <em class="absolute -top-[15px] left-1/2 -translate-x-1/2 not-italic font-mono text-[9.5px] text-muted whitespace-nowrap">{{ gh.t }}</em>
         </div>
       }
-      <div class="absolute top-[9px] w-[3px] h-[33px] bg-fg rounded-sm transition-[left] duration-700"
+      <div class="rail-marker absolute top-[9px] w-[3px] h-[33px] bg-fg rounded-sm transition-[left] duration-700"
            style="box-shadow:0 0 10px rgba(255,255,255,.35)"
            [style.left.%]="Math.min(99.7, value() * 100)"></div>
     </div>
     @if (zones().length || hotAbove() !== null) {
-      <div class="flex gap-2 flex-wrap mt-3">
+      <div class="flex gap-2 flex-wrap mt-3 rail-chips">
         @for (z of zones(); track z[0]) {
           <div class="font-mono text-[11px] px-2.5 py-1 rounded-lg border"
                [class.border-lo]="value() < z[2]" [class.text-lo]="value() < z[2]"
