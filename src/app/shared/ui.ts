@@ -76,14 +76,23 @@ export class ChartTipDirective {
  *  Ohne die Klasse rendert alles im Endzustand — die Animationen dürfen nie darüber
  *  entscheiden, ob etwas überhaupt sichtbar ist. */
 function revealOnEnter(el: HTMLElement, destroyRef: DestroyRef): void {
-  if (typeof IntersectionObserver !== 'function') { el.classList.add('in-view'); return; }
+  // Ohne Beobachter wird nichts versteckt: Der Inhalt bleibt sichtbar, nur ohne Animation.
+  if (typeof IntersectionObserver !== 'function') return;
+
   const io = new IntersectionObserver(entries => {
     for (const e of entries) {
       if (!e.isIntersecting) continue;
-      el.classList.add('in-view');
+      el.classList.add('in-view');   // pausierte Animation läuft an
       io.disconnect();
     }
   }, { rootMargin: '0px 0px -60px 0px' });   // erst zünden, wenn ein Stück wirklich zu sehen ist
+
+  // Reihenfolge ist entscheidend: erst verstecken, wenn der Beobachter nachweislich steht.
+  // Andersherum bliebe der Inhalt unsichtbar, falls die Konstruktion oben fehlschlägt.
+  // Der Konstruktor läuft vor dem ersten Bildaufbau, der Startzustand gilt also sofort —
+  // hinge er an `in-view`, wäre die Linie einen Moment fertig zu sehen, würde verschwinden
+  // und erst dann gezeichnet.
+  el.classList.add('reveal-pending');
   io.observe(el);
   destroyRef.onDestroy(() => io.disconnect());
 }
@@ -160,47 +169,6 @@ export class RailComponent {
   constructor() {
     revealOnEnter(inject<ElementRef<HTMLElement>>(ElementRef).nativeElement, inject(DestroyRef));
   }
-}
-
-/* ===== Ladeplatzhalter =====
- * Hält die Geometrie einer Metrik-Karte, solange der erste Snapshot unterwegs ist. Ohne ihn
- * greift auf den Seiten der @empty-Zweig und die Seite behauptet währenddessen, es lägen
- * keine Daten vor — und springt beim Eintreffen in der Höhe.
- *
- * Nur beim Erstaufruf: Beim Neuladen liegen bereits Werte vor, die durch Balken zu ersetzen
- * wäre ein Rückschritt. Dort meldet der Statusbalken im Kopf den Ladevorgang. */
-@Component({
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  selector: 'app-metric-skeleton',
-  template: `
-    @for (i of rows(); track i) {
-      <div class="bg-panel border border-line rounded-2xl p-6 mb-4" aria-hidden="true">
-        <!-- Kopfzeile: Titel links, Statistikzeile rechts -->
-        <div class="flex justify-between items-baseline gap-2.5 mb-3">
-          <div class="sk h-[15px] w-[170px]"></div>
-          <div class="sk h-[12px] w-[210px] max-w-[45%]"></div>
-        </div>
-        <!-- großer Wert -->
-        <div class="sk h-[34px] w-[104px] my-1"></div>
-        <!-- Deutungstext -->
-        <div class="sk h-[11px] w-full mt-3"></div>
-        <div class="sk h-[11px] w-3/5 mt-2"></div>
-        <!-- Farbband und Zonen-Chips -->
-        <div class="sk h-[11px] w-full rounded-md mt-7"></div>
-        <div class="flex gap-2 mt-5">
-          <div class="sk h-[25px] w-[118px] rounded-lg"></div>
-          <div class="sk h-[25px] w-[132px] rounded-lg"></div>
-        </div>
-        <!-- Chart: exakt das Seitenverhältnis der viewBox, damit die Höhe mitwächst -->
-        <div class="sk w-full rounded-lg mt-4 aspect-[460/118]"></div>
-      </div>
-    }
-  `,
-})
-export class MetricSkeletonComponent {
-  /** Wie viele Karten die Seite üblicherweise zeigt — damit die Höhe grob stimmt. */
-  count = input(3);
-  protected readonly rows = computed(() => Array.from({ length: this.count() }, (_, i) => i));
 }
 
 /* ===== Ladeplatzhalter =====

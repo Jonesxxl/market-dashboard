@@ -72,16 +72,18 @@ body {
    noch Endzustände. Bewusst nur unter `no-preference` — läge stroke-dashoffset außerhalb
    der Abfrage, bliebe es bei abgeschalteter Bewegung stehen und die Linie wäre unsichtbar. */
 @media (prefers-reduced-motion: no-preference) {
-  .in-view .spark path.draw {
+  /* Startzustand, pausiert. Gilt ab dem ersten gezeichneten Bild, weil `reveal-pending`
+     synchron im Konstruktor gesetzt wird. */
+  .reveal-pending .spark path.draw {
     stroke-dasharray: var(--len);
     stroke-dashoffset: var(--len);
-    animation: spark-draw 900ms cubic-bezier(.4, 0, .2, 1) forwards;
+    animation: spark-draw 900ms cubic-bezier(.4, 0, .2, 1) paused forwards;
   }
-  .in-view .spark circle.tip-dot {
+  .reveal-pending .spark circle.tip-dot {
     transform-box: fill-box; transform-origin: center;
-    animation: spark-dot 260ms cubic-bezier(.22, 1, .36, 1) 760ms both;
+    animation: spark-dot 260ms cubic-bezier(.22, 1, .36, 1) 760ms paused both;
   }
-  .in-view .spark text.tip-dot { animation: spark-fade 260ms ease-out 760ms both; }
+  .reveal-pending .spark text.tip-dot { animation: spark-fade 260ms ease-out 760ms paused both; }
 }
 @keyframes spark-draw { to { stroke-dashoffset: 0; } }
 @keyframes spark-dot { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
@@ -96,3 +98,28 @@ body {
 }
 @keyframes sk-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 @media (prefers-reduced-motion: reduce) { .sk::after { animation: none; } }
+
+/* Rail-Einlauf: Der Marker läuft von 0 auf seinen Wert und macht damit in einer Bewegung
+   sichtbar, dass das Farbband eine Skala von 0 bis 1 ist. Bewusst als CSS-Animation und
+   nicht per JS: Eine Animation startet mit dem Einhängen des Elements von selbst — ein
+   Umschalten über requestAnimationFrame bliebe in gedrosselten Hintergrund-Tabs hängen
+   und der Marker stünde dauerhaft auf 0.
+
+   Die Keyframes haben nur ein `from` und keine fill-mode: Danach ruht das Element wieder
+   auf seinem gebundenen `left`, und spätere Wertwechsel übernimmt die vorhandene
+   Transition. Die Chips melden sich, wenn der Marker steht. */
+@media (prefers-reduced-motion: no-preference) {
+  .reveal-pending .rail-marker { animation: rail-in 700ms cubic-bezier(.22, 1, .36, 1) paused; }
+  .reveal-pending .rail-chips > * { animation: rail-chip 420ms ease-out 620ms paused both; }
+
+  /* Anlaufen lassen, sobald der Beobachter das Element im Sichtbereich meldet. Diese Regel
+     muss NACH allen `reveal-pending`-Regeln stehen: gleiche Spezifität, die spätere gewinnt.
+     Sie setzt nur den Laufzustand, alles andere bleibt oben definiert. */
+  .in-view .spark path.draw,
+  .in-view .spark circle.tip-dot,
+  .in-view .spark text.tip-dot,
+  .in-view .rail-marker,
+  .in-view .rail-chips > * { animation-play-state: running; }
+}
+@keyframes rail-in { from { left: 0%; opacity: .35; } }
+@keyframes rail-chip { from { opacity: .35; } to { opacity: 1; } }
