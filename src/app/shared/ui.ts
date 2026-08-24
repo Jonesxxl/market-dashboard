@@ -76,14 +76,23 @@ export class ChartTipDirective {
  *  Ohne die Klasse rendert alles im Endzustand — die Animationen dürfen nie darüber
  *  entscheiden, ob etwas überhaupt sichtbar ist. */
 function revealOnEnter(el: HTMLElement, destroyRef: DestroyRef): void {
-  if (typeof IntersectionObserver !== 'function') { el.classList.add('in-view'); return; }
+  // Ohne Beobachter wird nichts versteckt: Der Inhalt bleibt sichtbar, nur ohne Animation.
+  if (typeof IntersectionObserver !== 'function') return;
+
   const io = new IntersectionObserver(entries => {
     for (const e of entries) {
       if (!e.isIntersecting) continue;
-      el.classList.add('in-view');
+      el.classList.add('in-view');   // pausierte Animation läuft an
       io.disconnect();
     }
   }, { rootMargin: '0px 0px -60px 0px' });   // erst zünden, wenn ein Stück wirklich zu sehen ist
+
+  // Reihenfolge ist entscheidend: erst verstecken, wenn der Beobachter nachweislich steht.
+  // Andersherum bliebe der Inhalt unsichtbar, falls die Konstruktion oben fehlschlägt.
+  // Der Konstruktor läuft vor dem ersten Bildaufbau, der Startzustand gilt also sofort —
+  // hinge er an `in-view`, wäre die Linie einen Moment fertig zu sehen, würde verschwinden
+  // und erst dann gezeichnet.
+  el.classList.add('reveal-pending');
   io.observe(el);
   destroyRef.onDestroy(() => io.disconnect());
 }
