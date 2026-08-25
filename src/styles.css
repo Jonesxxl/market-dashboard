@@ -152,3 +152,16 @@ body {
 }
 @keyframes rise-in { from { opacity: 0; transform: translateY(10px); } }
 @keyframes skala-in { from { left: 0%; opacity: .3; } }
+
+/* Kachel der Startseite: Der Hintergrund trägt die Zone, in der der Bereich gerade steht.
+   `--ton` kommt aus der Komponente; bei „neutral" ist es die Flächenfarbe selbst, die
+   Mischung ergibt dann schlicht `panel` — dass eine Kachel ungetönt bleibt, ist die Aussage.
+
+   16 % am oberen, 7 % am unteren Rand. Bei 16 % erreicht `muted` noch 4,3:1 und damit AA;
+   `faint` läge darunter und wird auf Kacheln deshalb nicht verwendet. */
+.kachel {
+  background:
+    linear-gradient(158deg,
+      color-mix(in srgb, var(--ton) 16%, theme('colors.panel')) 0%,
+      color-mix(in srgb, var(--ton) 7%, theme('colors.panel')) 100%);
+}
