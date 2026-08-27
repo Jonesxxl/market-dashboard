@@ -123,3 +123,45 @@ body {
 }
 @keyframes rail-in { from { left: 0%; opacity: .35; } }
 @keyframes rail-chip { from { opacity: .35; } to { opacity: 1; } }
+
+/* ===== Startseite: Positionsskala und Karteneintritt =====
+   Die Skala ist ein Meter, kein Diagramm: ein Wert auf einer bekannten 0–1-Achse. Sie
+   nutzt bewusst denselben Farbverlauf wie die Rail auf den Detailseiten, damit die
+   Leserichtung überall dieselbe ist. Farbe steht auf der Startseite sonst ausschließlich
+   für den Zustand (günstig / heiß / neutral) und nie allein — jeder Zustand trägt sein Wort. */
+.skala { position: relative; height: 12px; margin: 2px 0; }
+.skala-band {
+  position: absolute; left: 0; right: 0; top: 3px; height: 6px; border-radius: 3px;
+  background: linear-gradient(90deg, #22C6B8 0%, #22C6B8 15%, #F2B33D 50%, #F0533F 88%);
+  opacity: .75;
+}
+.skala-marke {
+  position: absolute; top: 0; width: 3px; height: 12px; border-radius: 2px;
+  background: theme('colors.fg'); box-shadow: 0 0 8px rgba(255, 255, 255, .35);
+  left: var(--pos);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Startzustand, pausiert — gilt ab dem ersten gezeichneten Bild. */
+  .reveal-pending .rise { animation: rise-in 320ms cubic-bezier(.22, 1, .36, 1) paused both; }
+  .reveal-pending .skala-marke { animation: skala-in 620ms cubic-bezier(.22, 1, .36, 1) 120ms paused both; }
+
+  /* Anlaufen lassen. Muss NACH den Regeln oben stehen: gleiche Spezifität, spätere gewinnt. */
+  .in-view .rise,
+  .in-view .skala-marke { animation-play-state: running; }
+}
+@keyframes rise-in { from { opacity: 0; transform: translateY(10px); } }
+@keyframes skala-in { from { left: 0%; opacity: .3; } }
+
+/* Kachel der Startseite: Der Hintergrund trägt die Zone, in der der Bereich gerade steht.
+   `--ton` kommt aus der Komponente; bei „neutral" ist es die Flächenfarbe selbst, die
+   Mischung ergibt dann schlicht `panel` — dass eine Kachel ungetönt bleibt, ist die Aussage.
+
+   16 % am oberen, 7 % am unteren Rand. Bei 16 % erreicht `muted` noch 4,3:1 und damit AA;
+   `faint` läge darunter und wird auf Kacheln deshalb nicht verwendet. */
+.kachel {
+  background:
+    linear-gradient(158deg,
+      color-mix(in srgb, var(--ton) 16%, theme('colors.panel')) 0%,
+      color-mix(in srgb, var(--ton) 7%, theme('colors.panel')) 100%);
+}
