@@ -46,19 +46,30 @@
   .btn:disabled {
     @apply opacity-45 cursor-not-allowed hover:text-muted hover:border-line hover:bg-panel2;
   }
+
+  /* Karte: Fläche, Kante, Radius. Innenabstand und Außenabstand setzt die Aufrufstelle,
+     weil sie je nach Inhalt variieren. Abweichungen gehen per Utility, die in der
+     utilities-Schicht liegt und deshalb gewinnt (`card border-dashed`, `card border-mid/50`). */
+  .card {
+    @apply bg-panel border border-line rounded-2xl;
+  }
+  /* Überschrift einer Karte — klein, gesperrt, in Großbuchstaben. */
+  .card-title {
+    @apply text-[13px] font-bold tracking-widest uppercase text-muted mb-3.5;
+  }
 }
 
 body {
   @apply bg-ink text-fg font-sans;
   background-image:
-    linear-gradient(rgba(34,198,184,.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(34,198,184,.025) 1px, transparent 1px);
+    linear-gradient(theme('colors.lo / 2.5%') 1px, transparent 1px),
+    linear-gradient(90deg, theme('colors.lo / 2.5%') 1px, transparent 1px);
   background-size: 44px 44px;
 }
 
 /* Chart-Texte: Halo gegen Überlappungen */
 .spark svg text { font-family: theme('fontFamily.mono'); font-size: 10px; fill: theme('colors.faint');
-  paint-order: stroke; stroke: #0B1220; stroke-width: 3px; stroke-linejoin: round; }
+  paint-order: stroke; stroke: theme('colors.ink'); stroke-width: 3px; stroke-linejoin: round; }
 .spark { cursor: crosshair; }
 
 #charttip { position: fixed; display: none; z-index: 60; pointer-events: none;
@@ -66,73 +77,24 @@ body {
   font-family: theme('fontFamily.mono'); font-size: 11.5px; padding: 5px 10px; border-radius: 7px;
   box-shadow: 0 4px 16px rgba(0,0,0,.55); white-space: nowrap; }
 
-/* Chart-Einzeichnung: Die Linie läuft von links nach rechts durch, Endpunkt und Endwert
-   setzen sich danach. Die Animationen hängen an `.in-view`, das ein IntersectionObserver
-   setzt — sonst laufen alle Karten beim Laden gleichzeitig ab und wer scrollt, sieht nur
-   noch Endzustände. Bewusst nur unter `no-preference` — läge stroke-dashoffset außerhalb
-   der Abfrage, bliebe es bei abgeschalteter Bewegung stehen und die Linie wäre unsichtbar. */
-@media (prefers-reduced-motion: no-preference) {
-  /* Startzustand, pausiert. Gilt ab dem ersten gezeichneten Bild, weil `reveal-pending`
-     synchron im Konstruktor gesetzt wird. */
-  .reveal-pending .spark path.draw {
-    stroke-dasharray: var(--len);
-    stroke-dashoffset: var(--len);
-    animation: spark-draw 900ms cubic-bezier(.4, 0, .2, 1) paused forwards;
-  }
-  .reveal-pending .spark circle.tip-dot {
-    transform-box: fill-box; transform-origin: center;
-    animation: spark-dot 260ms cubic-bezier(.22, 1, .36, 1) 760ms paused both;
-  }
-  .reveal-pending .spark text.tip-dot { animation: spark-fade 260ms ease-out 760ms paused both; }
-}
-@keyframes spark-draw { to { stroke-dashoffset: 0; } }
-@keyframes spark-dot { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
-@keyframes spark-fade { from { opacity: 0; } to { opacity: 1; } }
-
 /* Ladeplatzhalter: hält die Kartenhöhe, solange der Snapshot unterwegs ist. */
 .sk { background: theme('colors.line'); border-radius: 4px; position: relative; overflow: hidden; }
 .sk::after {
   content: ""; position: absolute; inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(232, 236, 243, .06), transparent);
+  background: linear-gradient(90deg, transparent, theme('colors.fg / 6%'), transparent);
   animation: sk-shimmer 1400ms ease-in-out infinite;
 }
 @keyframes sk-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 @media (prefers-reduced-motion: reduce) { .sk::after { animation: none; } }
 
-/* Rail-Einlauf: Der Marker läuft von 0 auf seinen Wert und macht damit in einer Bewegung
-   sichtbar, dass das Farbband eine Skala von 0 bis 1 ist. Bewusst als CSS-Animation und
-   nicht per JS: Eine Animation startet mit dem Einhängen des Elements von selbst — ein
-   Umschalten über requestAnimationFrame bliebe in gedrosselten Hintergrund-Tabs hängen
-   und der Marker stünde dauerhaft auf 0.
-
-   Die Keyframes haben nur ein `from` und keine fill-mode: Danach ruht das Element wieder
-   auf seinem gebundenen `left`, und spätere Wertwechsel übernimmt die vorhandene
-   Transition. Die Chips melden sich, wenn der Marker steht. */
-@media (prefers-reduced-motion: no-preference) {
-  .reveal-pending .rail-marker { animation: rail-in 700ms cubic-bezier(.22, 1, .36, 1) paused; }
-  .reveal-pending .rail-chips > * { animation: rail-chip 420ms ease-out 620ms paused both; }
-
-  /* Anlaufen lassen, sobald der Beobachter das Element im Sichtbereich meldet. Diese Regel
-     muss NACH allen `reveal-pending`-Regeln stehen: gleiche Spezifität, die spätere gewinnt.
-     Sie setzt nur den Laufzustand, alles andere bleibt oben definiert. */
-  .in-view .spark path.draw,
-  .in-view .spark circle.tip-dot,
-  .in-view .spark text.tip-dot,
-  .in-view .rail-marker,
-  .in-view .rail-chips > * { animation-play-state: running; }
-}
-@keyframes rail-in { from { left: 0%; opacity: .35; } }
-@keyframes rail-chip { from { opacity: .35; } to { opacity: 1; } }
-
-/* ===== Startseite: Positionsskala und Karteneintritt =====
+/* ===== Startseite: Positionsskala =====
    Die Skala ist ein Meter, kein Diagramm: ein Wert auf einer bekannten 0–1-Achse. Sie
-   nutzt bewusst denselben Farbverlauf wie die Rail auf den Detailseiten, damit die
-   Leserichtung überall dieselbe ist. Farbe steht auf der Startseite sonst ausschließlich
-   für den Zustand (günstig / heiß / neutral) und nie allein — jeder Zustand trägt sein Wort. */
+   nutzt denselben Farbverlauf wie die Rail auf den Detailseiten (`bg-skala`, definiert
+   in tailwind.config.ts aus der Palette), damit die Leserichtung überall dieselbe ist. */
 .skala { position: relative; height: 12px; margin: 2px 0; }
 .skala-band {
   position: absolute; left: 0; right: 0; top: 3px; height: 6px; border-radius: 3px;
-  background: linear-gradient(90deg, #22C6B8 0%, #22C6B8 15%, #F2B33D 50%, #F0533F 88%);
+  background: theme('backgroundImage.skala');
   opacity: .75;
 }
 .skala-marke {
@@ -140,18 +102,6 @@ body {
   background: theme('colors.fg'); box-shadow: 0 0 8px rgba(255, 255, 255, .35);
   left: var(--pos);
 }
-
-@media (prefers-reduced-motion: no-preference) {
-  /* Startzustand, pausiert — gilt ab dem ersten gezeichneten Bild. */
-  .reveal-pending .rise { animation: rise-in 320ms cubic-bezier(.22, 1, .36, 1) paused both; }
-  .reveal-pending .skala-marke { animation: skala-in 620ms cubic-bezier(.22, 1, .36, 1) 120ms paused both; }
-
-  /* Anlaufen lassen. Muss NACH den Regeln oben stehen: gleiche Spezifität, spätere gewinnt. */
-  .in-view .rise,
-  .in-view .skala-marke { animation-play-state: running; }
-}
-@keyframes rise-in { from { opacity: 0; transform: translateY(10px); } }
-@keyframes skala-in { from { left: 0%; opacity: .3; } }
 
 /* Kachel der Startseite: Der Hintergrund trägt die Zone, in der der Bereich gerade steht.
    `--ton` kommt aus der Komponente; bei „neutral" ist es die Flächenfarbe selbst, die
@@ -165,3 +115,58 @@ body {
       color-mix(in srgb, var(--ton) 16%, theme('colors.panel')) 0%,
       color-mix(in srgb, var(--ton) 7%, theme('colors.panel')) 100%);
 }
+
+/* ===== Einblend-Animationen =====
+   Alle Eintritte folgen demselben Muster, gesteuert von `RevealDirective`:
+
+   1. `reveal-pending` steht ab dem ersten gezeichneten Bild am Element. Darunter liegt jede
+      Animation mit ihrem Startzustand bereit, aber pausiert — die Linie ist unsichtbar, der
+      Marker steht links. Hinge der Startzustand erst an `in-view`, wäre alles einen Moment
+      fertig zu sehen, verschwände und würde dann erst gezeichnet.
+   2. `in-view` kommt dazu, sobald das Element in den Sichtbereich scrollt, und lässt die
+      Animationen laufen. Ohne das liefen alle Karten gleichzeitig beim Laden ab.
+
+   Alles liegt unter `no-preference`: Bei abgeschalteter Bewegung gibt es keinen Startzustand,
+   der Inhalt steht sofort vollständig da. Ohne IntersectionObserver setzt die Direktive gar
+   nichts — die Animationen dürfen nie darüber entscheiden, ob etwas sichtbar ist. */
+@media (prefers-reduced-motion: no-preference) {
+  /* Chart-Einzeichnung: Linie von links nach rechts, danach setzen sich Endpunkt und Endwert. */
+  .reveal-pending .spark path.draw {
+    stroke-dasharray: var(--len);
+    stroke-dashoffset: var(--len);
+    animation: spark-draw 900ms cubic-bezier(.4, 0, .2, 1) paused forwards;
+  }
+  .reveal-pending .spark circle.tip-dot {
+    transform-box: fill-box; transform-origin: center;
+    animation: spark-dot 260ms cubic-bezier(.22, 1, .36, 1) 760ms paused both;
+  }
+  .reveal-pending .spark text.tip-dot { animation: spark-fade 260ms ease-out 760ms paused both; }
+
+  /* Rail: Der Marker läuft von 0 auf seinen Wert und zeigt damit in einer Bewegung, dass das
+     Farbband eine Skala von 0 bis 1 ist. Die Keyframes haben nur ein `from` und keine
+     fill-mode — danach ruht der Marker auf seinem gebundenen `left`, und spätere Wertwechsel
+     übernimmt die vorhandene Transition. Die Chips melden sich, wenn der Marker steht. */
+  .reveal-pending .rail-marker { animation: rail-in 700ms cubic-bezier(.22, 1, .36, 1) paused; }
+  .reveal-pending .rail-chips > * { animation: rail-chip 420ms ease-out 620ms paused both; }
+
+  /* Startseite: Karten steigen auf, die Skalenmarke läuft ein. */
+  .reveal-pending .rise { animation: rise-in 320ms cubic-bezier(.22, 1, .36, 1) paused both; }
+  .reveal-pending .skala-marke { animation: skala-in 620ms cubic-bezier(.22, 1, .36, 1) 120ms paused both; }
+
+  /* Anlaufen lassen. MUSS die letzte Regel dieses Blocks bleiben: gleiche Spezifität wie die
+     Regeln oben, also gewinnt die spätere. Sie setzt nur den Laufzustand. */
+  .in-view .spark path.draw,
+  .in-view .spark circle.tip-dot,
+  .in-view .spark text.tip-dot,
+  .in-view .rail-marker,
+  .in-view .rail-chips > *,
+  .in-view .rise,
+  .in-view .skala-marke { animation-play-state: running; }
+}
+@keyframes spark-draw { to { stroke-dashoffset: 0; } }
+@keyframes spark-dot { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
+@keyframes spark-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rail-in { from { left: 0%; opacity: .35; } }
+@keyframes rail-chip { from { opacity: .35; } to { opacity: 1; } }
+@keyframes rise-in { from { opacity: 0; transform: translateY(10px); } }
+@keyframes skala-in { from { left: 0%; opacity: .3; } }

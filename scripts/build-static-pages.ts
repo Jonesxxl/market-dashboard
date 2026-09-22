@@ -14,17 +14,17 @@
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { fmt } from '../metrics-core/math';
+import { fmt, formatValue, kindLabel } from '../metrics-core/math';
+import { HOME, ORIGIN, PAGES, PagePath } from '../metrics-core/site';
 import { MetricSnapshot, Snapshot } from '../metrics-core/types';
 
 const DIST = 'dist/macro-ng/browser';
-const ORIGIN = 'https://chipper-cucurucho-5d0a49.netlify.app';
 
 const esc = (s: string): string =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 /** Deutungstexte tragen <b>-Auszeichnung; die bleibt erhalten, alles andere wird entschärft. */
 const richt = (s: string): string => esc(s).replace(/&lt;(\/?b)&gt;/g, '<$1>');
-const wert = (m: MetricSnapshot): string => m.current.value.toFixed(m.kind === 'risk' ? 3 : 2);
+const wert = (m: MetricSnapshot): string => formatValue(m.kind, m.current.value);
 
 interface Page {
   path: string; title: string; desc: string; h1: string; lead: string;
@@ -47,7 +47,7 @@ function tabelle(ms: MetricSnapshot[]): string {
 
 function deutungen(ms: MetricSnapshot[]): string {
   return ms.map(m => `<section>
-    <h3>${esc(m.label)} — ${m.kind === 'risk' ? 'Risk' : 'Heat'} ${wert(m)}</h3>
+    <h3>${esc(m.label)} — ${kindLabel(m.kind)} ${wert(m)}</h3>
     <p>${richt(m.interpret)}</p>
     <p>Kurs ${fmt(m.current.price, m.dec)}${m.unit ? ' ' + esc(m.unit) : ''} ·
        52-Wochen-Spanne ${fmt(m.stats.lo52, m.dec)}–${fmt(m.stats.hi52, m.dec)} ·
@@ -73,6 +73,14 @@ const METHODIK = `<section>
   Vergangenheit ohne Prognosecharakter.</p>
 </section>`;
 
+/** Titel und Beschreibung kommen aus metrics-core/site.ts — dieselben, die der Browser nach
+ *  dem Start setzt. Datenseiten hängen den aktuellen Wert an, damit Suchen ihn schon im
+ *  Snippet sehen. */
+const meta = (path: PagePath, aktuell?: string): Pick<Page, 'path' | 'title' | 'desc'> => ({
+  path, title: PAGES[path].title,
+  desc: PAGES[path].description + (aktuell ? ` Aktuell: ${aktuell}.` : ''),
+});
+
 function seiten(snap: Snapshot): Page[] {
   const von = (ids: string[]) => ids.map(i => snap.metrics.find(m => m.id === i)).filter((m): m is MetricSnapshot => !!m);
   const klasse = (k: string) => snap.metrics.filter(m => m.assetClass === k);
@@ -80,6 +88,8 @@ function seiten(snap: Snapshot): Page[] {
 
   const krypto = von(['btc-risk', 'eth-risk', 'btc-mvrv-z', 'dai-basket-heat']);
   const metalle = klasse('metal');
+  const btc = krypto.find(m => m.id === 'btc-risk');
+  const gold = metalle.find(m => m.id === 'gold-heat');
   const ki = [...klasse('equity'), ...klasse('credit')];
   const fx = klasse('fx');
 
@@ -97,55 +107,47 @@ function seiten(snap: Snapshot): Page[] {
 
   return [
     {
-      path: '', title: 'Macro Risk Dashboard · Krypto · Metalle · KI · Währungen',
-      desc: 'Wie günstig oder teuer stehen Bitcoin, Gold, der Nasdaq und die großen Währungen — gemessen an ihrer eigenen Geschichte? Täglich neu berechnete Perzentile statt Bauchgefühl.',
+      path: '', title: HOME.title, desc: HOME.description,
       h1: 'Macro Risk Dashboard: Wie außergewöhnlich ist der heutige Kurs?',
       lead: 'Für Kryptowährungen, Edelmetalle, den Nasdaq 100 und die großen Währungen wird dieselbe Frage beantwortet: Wie weit liegt der Kurs über oder unter seinem langfristigen Trend — und an wie vielen Handelstagen der Vergangenheit war diese Abweichung noch größer? Weil jedes Asset nur an seiner eigenen Historie gemessen wird, sind die Ergebnisse untereinander vergleichbar.',
       metrics: snap.metrics,
     },
     {
-      path: 'krypto', title: 'Krypto — Risk-Metrik für Bitcoin und Ethereum',
-      desc: `Zyklus-Risk für Bitcoin (aktuell ${von(['btc-risk'])[0] ? wert(von(['btc-risk'])[0]) : '–'}) und Ethereum: 0 entspricht dem Niveau historischer Böden, 1 dem historischer Tops. Dazu MVRV-Z-Score und Digital-Asset-Basket.`,
+      ...meta('krypto', btc ? `Bitcoin-Risk ${wert(btc)}` : undefined),
       h1: 'Krypto: Wie teuer sind Bitcoin und Ethereum gemessen an ihrer eigenen Geschichte?',
       lead: 'Die Zyklus-Risk-Metrik setzt den Kurs ins Verhältnis zu seinem mehrjährigen Durchschnitt und gewichtet ihn über die Zeit, damit die von Zyklus zu Zyklus schrumpfenden Ausschläge vergleichbar bleiben. Ergänzt wird sie um den MVRV-Z-Score, der aus On-Chain-Daten stammt statt aus dem Kursverlauf.',
       metrics: krypto,
     },
     {
-      path: 'metalle', title: 'Edelmetalle — Gold, Silber und Palladium',
-      desc: `Heat-Perzentile für Gold, Silber und Palladium: wie weit der Kurs von seinem 200-Tage-Durchschnitt abweicht und wie selten das historisch war. Gold aktuell ${metalle[0] ? wert(metalle[0]) : '–'}.`,
+      ...meta('metalle', gold ? `Gold-Heat ${wert(gold)}` : undefined),
       h1: 'Edelmetalle: Wie günstig stehen Gold, Silber und Palladium zu ihrem eigenen Trend?',
       lead: 'Für jedes Metall wird gemessen, wie weit der Kurs von seinem 200-Tage-Durchschnitt abweicht und an wie vielen Tagen der Historie diese Abweichung größer war.',
       metrics: metalle, extra: ratioText,
     },
     {
-      path: 'nasdaq-ki', title: 'Nasdaq und KI — Blasen-Score',
-      desc: `Der KI-Blasen-Score bündelt fünf Messgrößen: Nasdaq-Trend, Trend des KI-Baskets, dessen Vorsprung vor dem S&P 500, Marktkonzentration und Kredit-Risikoappetit. Aktuell ${b ? b.score.toFixed(2) : '–'}.`,
+      ...meta('nasdaq-ki', b ? `KI-Blasen-Score ${b.score.toFixed(2)}` : undefined),
       h1: 'Nasdaq und KI: Wie weit ist die Bewertung von ihrem eigenen Trend entfernt?',
       lead: 'Der KI-Blasen-Score mittelt mehrere Perzentile zu einer Zahl zwischen 0 und 1. Er misst nicht, ob eine Blase platzt, sondern wie ungewöhnlich der heutige Zustand gegenüber der eigenen Vergangenheit ist.',
       metrics: ki, extra: bubbleText,
     },
     {
-      path: 'waehrungen', title: 'Währungen — Dollar-Index und Paare',
-      desc: 'Dollar-Index, USD/EUR, USD/CHF, USD/CNY, USD/GHS und das Kreuzpaar CHF/EUR — je Karte der Heat-Wert und der tatsächliche Kursverlauf. Bei den Dollar-Paaren bedeutet eine steigende Kurve immer einen stärkeren Dollar.',
+      ...meta('waehrungen'),
       h1: 'Währungen: Wie gedehnt sind Dollar, Euro, Franken, Yuan und Cedi?',
       lead: 'Alle Dollar-Paare notieren den US-Dollar als Basiswährung, eine steigende Kurve bedeutet dort also immer einen stärkeren Dollar. Einzige Ausnahme ist CHF/EUR, ein Kreuzpaar ohne Dollar. Währungen kennen keine Kaufzonen wie Aktien; bei ihnen sind die Extreme das Signal.',
       metrics: fx,
     },
     {
-      path: 'impressum', title: 'Impressum',
-      desc: 'Anbieterkennzeichnung nach § 5 DDG sowie Hinweise zu Haftung und Inhalt des Macro Risk Dashboards.',
+      ...meta('impressum'),
       h1: 'Impressum',
       lead: 'Anbieterkennzeichnung nach § 5 DDG. Dieses Dashboard ist ein privates, nicht-kommerzielles Statistikprojekt. Alle Kennzahlen sind rein historische Auswertungen und ausdrücklich keine Anlageberatung, keine Anlagevermittlung und keine Kauf- oder Verkaufsempfehlung.',
     },
     {
-      path: 'datenschutz', title: 'Datenschutz',
-      desc: 'Diese Seite setzt keine Cookies, nutzt keinen LocalStorage und enthält keine Formulare. Welche Daten beim Aufruf trotzdem verarbeitet werden, steht hier.',
+      ...meta('datenschutz'),
       h1: 'Datenschutzerklärung',
       lead: 'Diese Seite setzt keine Cookies, nutzt weder LocalStorage noch SessionStorage und enthält keine Formulare, keine Registrierung und kein Nutzerkonto. Verbindungen entstehen beim Aufruf zu Netlify (Hosting), GoatCounter (cookiefreie Reichweitenmessung) und GitHub (Abruf der Kennzahlen). Schriften werden vom eigenen Server ausgeliefert.',
     },
     {
-      path: 'generator', title: 'Sparplan- und Rebalancing-Generator',
-      desc: 'Leitet aus den aktuellen Signalen eine Gewichtung für Sparrate oder Depot ab. Die Berechnung läuft vollständig im Browser — eingegebene Beträge werden nicht übertragen und nicht gespeichert.',
+      ...meta('generator'),
       h1: 'Sparplan- und Rebalancing-Generator',
       lead: 'Sparrate oder Depotwert eingeben; ein festes Regelwerk verschiebt die Gewichte entlang der aktuellen Signale. Die Berechnung läuft vollständig im Browser, eingegebene Beträge werden weder übertragen noch gespeichert. Simulation, keine Anlageberatung.',
     },
@@ -195,15 +197,23 @@ function inhalt(p: Page, snap: Snapshot): string {
 
 function schreibe(shell: string, p: Page, snap: Snapshot): void {
   const url = ORIGIN + (p.path ? '/' + p.path : '/');
-  let html = shell;
-  html = html.replace(/<title>[^<]*<\/title>/, `<title>${esc(p.title)}</title>`);
-  html = html.replace(/(<meta name="description" content=")[^"]*(")/, `$1${esc(p.desc)}$2`);
-  html = html.replace(/(<link rel="canonical" href=")[^"]*(")/, `$1${url}$2`);
-  html = html.replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${url}$2`);
-  html = html.replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${esc(p.title)}$2`);
-  html = html.replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${esc(p.desc)}$2`);
-  html = html.replace(/(<meta name="twitter:title" content=")[^"]*(")/, `$1${esc(p.title)}$2`);
-  html = html.replace(/(<meta name="twitter:description" content=")[^"]*(")/, `$1${esc(p.desc)}$2`);
+  let html = shell.replace(/<title>[^<]*<\/title>/, `<title>${esc(p.title)}</title>`);
+  // [Anfang des Tags bis zum Attributwert, neuer Wert] — ersetzt wird nur der Wert
+  const tags: [string, string][] = [
+    ['<meta name="description" content="', esc(p.desc)],
+    ['<link rel="canonical" href="', url],
+    ['<meta property="og:url" content="', url],
+    ['<meta property="og:title" content="', esc(p.title)],
+    ['<meta property="og:description" content="', esc(p.desc)],
+    ['<meta name="twitter:title" content="', esc(p.title)],
+    ['<meta name="twitter:description" content="', esc(p.desc)],
+  ];
+  for (const [start, neu] of tags) {
+    const i = html.indexOf(start);
+    if (i < 0) continue;
+    const a = i + start.length;
+    html = html.slice(0, a) + neu + html.slice(html.indexOf('"', a));
+  }
   html = html.replace('</head>', `  ${jsonLd(p, snap)}\n</head>`);
   // Angular leert <app-root> beim Bootstrap; der Inhalt hier ist der Zustand davor.
   html = html.replace(/<app-root><\/app-root>/,

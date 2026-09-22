@@ -12,7 +12,7 @@ type Mode = 'dca' | 'rebalance';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [FormField],
   template: `
-    <div class="bg-panel border border-mid/50 rounded-2xl px-6 py-4 mb-4">
+    <div class="card border-mid/50 px-6 py-4 mb-4">
       <p class="text-[13px] text-muted leading-relaxed">
         <b class="text-mid">⚠ Simulation, keine Anlageberatung.</b> Dieses Werkzeug rechnet ein festes Regelwerk
         auf die aktuellen Dashboard-Signale — es kennt weder deine Gesamtsituation noch Steuern, Gebühren oder
@@ -22,7 +22,7 @@ type Mode = 'dca' | 'rebalance';
     </div>
 
     <!-- Eingaben -->
-    <div class="bg-panel border border-line rounded-2xl p-6 mb-4">
+    <div class="card p-6 mb-4">
       <div class="flex gap-2 flex-wrap mb-5">
         @for (m of modes; track m.id) {
           <button type="button" (click)="mode.set(m.id)" class="btn"
@@ -44,7 +44,7 @@ type Mode = 'dca' | 'rebalance';
           <p class="font-mono text-[10.5px] tracking-wide uppercase text-faint mt-5 mb-2">
             Krypto-Obergrenze: <span class="text-fg">{{ maxCrypto() }} %</span></p>
           <input type="range" min="0" max="60" step="5" [value]="maxCrypto()"
-            (input)="maxCrypto.set(+$any($event.target).value)" class="w-full accent-[#22C6B8]"
+            (input)="maxCrypto.set(+$any($event.target).value)" class="w-full accent-lo"
             aria-label="Maximaler Krypto-Anteil in Prozent">
           <p class="font-mono text-[10.5px] tracking-wide uppercase text-faint mt-5 mb-2">Assets im Universum</p>
           <div class="flex gap-1.5 flex-wrap">
@@ -84,8 +84,8 @@ type Mode = 'dca' | 'rebalance';
 
     <!-- Zielgewichte -->
     @if (rows(); as R) {
-      <div class="bg-panel border border-line rounded-2xl p-6 mb-4">
-        <h2 class="text-[13px] font-bold tracking-widest uppercase text-muted mb-4">
+      <div class="card p-6 mb-4">
+        <h2 class="card-title mb-4">
           Zielgewichte · {{ profile().label }} · Strategie „{{ strategyLabel }}"</h2>
         @for (r of R; track r.asset.id) {
           <div class="mb-3.5">
@@ -110,8 +110,8 @@ type Mode = 'dca' | 'rebalance';
       </div>
 
       @if (mode() === 'dca') {
-        <div class="bg-panel border border-line rounded-2xl p-6">
-          <h2 class="text-[13px] font-bold tracking-widest uppercase text-muted mb-3.5">
+        <div class="card p-6">
+          <h2 class="card-title">
             Sparplan · {{ fmt(monthlyValue()) }} € pro Monat</h2>
           <table class="w-full font-mono text-[12.5px] max-w-md">
             <tbody>
@@ -130,8 +130,8 @@ type Mode = 'dca' | 'rebalance';
             an der Rate — wird es heiß, schrumpft er.</p>
         </div>
       } @else {
-        <div class="bg-panel border border-line rounded-2xl p-6">
-          <h2 class="text-[13px] font-bold tracking-widest uppercase text-muted mb-3.5">
+        <div class="card p-6">
+          <h2 class="card-title">
             Rebalancing-Vorschlag @if (reb().total > 0) { · Depotwert {{ fmt(reb().total) }} € }</h2>
           @if (reb().total <= 0) {
             <p class="text-muted text-[13.5px]">Trage links deine aktuellen Positionen ein — auch grobe Beträge reichen.</p>
@@ -179,21 +179,18 @@ export class GeneratorComponent {
   protected readonly maxCrypto = signal(25);
   protected readonly active = signal<Set<string>>(new Set(this.toggleableAssets.map(a => a.id)));
 
+  /** Formularmodell. Die Positionsfelder entstehen aus ASSET_UNIVERSE — ein neues Asset dort
+   *  bekommt hier automatisch sein Eingabefeld, seine Validierung und seinen Platz im
+   *  Rebalancing. Vorher standen die acht Felder dreimal von Hand im Code. */
   private readonly model = signal({
     monthly: 500,
-    posBtc: 0, posEth: 0, posGold: 0, posSilver: 0, posPall: 0, posNdx: 0, posAi: 0, posCash: 0,
+    pos: Object.fromEntries(ASSET_UNIVERSE.map(a => [a.id, 0])) as Record<string, number>,
   });
   protected readonly f = form(this.model, p => {
     min(p.monthly, 1);
-    min(p.posBtc, 0); min(p.posEth, 0); min(p.posGold, 0); min(p.posSilver, 0);
-    min(p.posPall, 0); min(p.posNdx, 0); min(p.posAi, 0); min(p.posCash, 0);
+    for (const a of ASSET_UNIVERSE) min(p.pos[a.id], 0);
   });
-
-  private readonly posKey: Record<string, keyof ReturnType<typeof this.model>> = {
-    btc: 'posBtc', eth: 'posEth', gold: 'posGold', silver: 'posSilver',
-    pall: 'posPall', ndx: 'posNdx', ai: 'posAi', cash: 'posCash',
-  };
-  protected posField(assetId: string) { return this.f[this.posKey[assetId]]; }
+  protected posField(assetId: string) { return this.f.pos[assetId]; }
 
   protected isActive(id: string): boolean { return this.active().has(id); }
   protected toggleAsset(id: string): void {
@@ -220,10 +217,8 @@ export class GeneratorComponent {
   protected readonly monthlyValue = computed(() => Math.max(0, this.model().monthly || 0));
   protected readonly plan = computed(() => dcaPlan(this.rows() ?? [], this.monthlyValue()));
   protected readonly reb = computed(() => {
-    const m = this.model();
-    return rebalance(this.rows() ?? [], {
-      btc: m.posBtc || 0, eth: m.posEth || 0, gold: m.posGold || 0, silver: m.posSilver || 0,
-      pall: m.posPall || 0, ndx: m.posNdx || 0, ai: m.posAi || 0, cash: m.posCash || 0,
-    });
+    // Leere Zahlenfelder liefern null oder NaN — für das Rebalancing zählen sie als 0.
+    const pos = Object.fromEntries(Object.entries(this.model().pos).map(([id, v]) => [id, v || 0]));
+    return rebalance(this.rows() ?? [], pos);
   });
 }

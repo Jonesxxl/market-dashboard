@@ -8,7 +8,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-datenschutz',
   template: `
-    <article class="bg-panel border border-line rounded-2xl p-6 md:p-8 max-w-3xl">
+    <article class="card p-6 md:p-8 max-w-3xl">
       <h2 class="text-2xl font-bold text-fg mb-6">Datenschutzerklärung</h2>
 
       <div class="font-mono text-[12.5px] text-mid border border-dashed border-mid rounded-xl px-4 py-3 mb-7">

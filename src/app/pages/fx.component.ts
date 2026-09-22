@@ -1,14 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { MetricCardComponent } from '../shared/metric-card.component';
-import { MetricSkeletonComponent } from '../shared/ui';
+import { MetricListComponent } from '../shared/metric-list.component';
 import { MarketDataService } from '../core/market-data.service';
 
 @Component({
   selector: 'app-fx',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MetricCardComponent, MetricSkeletonComponent],
+  imports: [MetricListComponent],
   template: `
-    <div class="bg-panel border border-line rounded-2xl px-6 py-5 mb-4">
+    <div class="card px-6 py-5 mb-4">
       <p class="text-[13.5px] text-muted leading-relaxed">
         <b class="text-fg">Die Dollar-Paare notieren durchgehend den Dollar als Basiswährung.</b> Eine steigende
         Kurve bedeutet dort also immer: Der Dollar gewinnt gegenüber der jeweiligen Währung. Aus diesem Grund wird
@@ -23,21 +22,11 @@ import { MarketDataService } from '../core/market-data.service';
         unter 0,15 oder über 0,85 markieren stark gedehnte Bewegungen, die in der Vergangenheit häufig zurückliefen.
       </p>
     </div>
-    @if (data.loading() && !fxMetrics().length) {
-      <app-metric-skeleton [count]="6"/>
-    } @else {
-      @for (m of fxMetrics(); track m.id) { <app-metric-card [m]="m"/> }
-      @empty {
-        <div class="bg-panel border border-dashed border-line rounded-2xl p-6 mb-4 text-muted text-[13.5px]">
-          Für diesen Bereich liegen noch keine Daten im Snapshot — der tägliche Berechnungslauf
-          (GitHub Action) füllt ihn beim nächsten erfolgreichen Durchgang automatisch.
-        </div>
-      }
-    }
+    <app-metric-list [metrics]="fxMetrics()" [skeletonCount]="6"/>
   `,
 })
 export class FxComponent {
-  protected data = inject(MarketDataService);
+  private data = inject(MarketDataService);
   protected readonly fxMetrics = computed(() =>
     this.data.metrics().filter(m => m.assetClass === 'fx'));
 }
