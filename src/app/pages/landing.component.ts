@@ -1,29 +1,25 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { einordnenAngezeigt, lageWort } from '../../../metrics-core/lage';
 import { formatValue } from '../../../metrics-core/math';
 import { PALETTE } from '../../../metrics-core/palette';
-import { AssetClass } from '../../../metrics-core/types';
+import { AssetClass, Lage } from '../../../metrics-core/types';
 import { MarketDataService, MetricSnapshot } from '../core/market-data.service';
 import { RevealDirective } from '../shared/reveal.directive';
 
-/** Zustand einer Metrik. Farbe trägt auf dieser Seite ausschließlich diese Bedeutung —
- *  und nie allein: Jeder Zustand erscheint zusammen mit seinem Wort. */
-type Lage = 'kauf' | 'warn' | 'tief' | 'hoch' | 'neutral';
-
-const LABEL: Record<Lage, string> = {
-  kauf: 'Kaufzone', warn: 'Warnzone', tief: 'ungewöhnlich tief',
-  hoch: 'ungewöhnlich hoch', neutral: 'im Mittelfeld',
-};
-/** Schrift- und Punktfarbe je Zustand. */
-const FARBE: Record<Lage, string> = {
-  kauf: PALETTE.lo, tief: PALETTE.lo, warn: PALETTE.hi, hoch: PALETTE.hi, neutral: PALETTE.muted,
-};
-/** Tönung der Kachel. „Neutral" bekommt die Flächenfarbe selbst, mischt sich also zu
- *  nichts — dass eine Kachel ungetönt bleibt, ist die Aussage. */
-const TON: Record<Lage, string> = { ...FARBE, neutral: PALETTE.panel };
-
-/** Ab diesem Abstand von der Mitte gilt ein Wert als auffällig. */
-const RAND = 0.25;
+/** Farbe trägt auf dieser Seite nur den Zustand — und nie allein: Jeder Zustand erscheint
+ *  zusammen mit seinem Wort. Türkis/Rot heißt günstig/heiß; das gibt es nur bei Metriken
+ *  mit Zonen. Bei Währungen gibt es kein günstig oder teuer, dort ist „ungewöhnlich" hell
+ *  und ohne Wertung.
+ *
+ *  `ton` tönt die Kachel. Im Mittelfeld ist es die Flächenfarbe selbst, die Mischung ergibt
+ *  also nichts — dass eine Kachel ungetönt bleibt, ist die Aussage. */
+function farben(lage: Lage, wertend: boolean): { farbe: string; ton: string } {
+  if (lage === 'neutral') return { farbe: PALETTE.muted, ton: PALETTE.panel };
+  if (!wertend) return { farbe: PALETTE.fg, ton: PALETTE.muted };
+  const f = lage === 'kauf' || lage === 'tief' ? PALETTE.lo : PALETTE.hi;
+  return { farbe: f, ton: f };
+}
 
 /** Die vier Bereiche der Startseite, in Anzeigereihenfolge. Welche Assetklassen ein Bereich
  *  umfasst, steht nur hier — vorher an zwei Stellen, die gleich bleiben mussten. */
@@ -40,29 +36,23 @@ const BEREICHE: { route: string; titel: string; frage: string; klassen: AssetCla
 
 interface Zeile {
   id: string; klasse: AssetClass; name: string; wert: number; anzeige: string;
-  lage: Lage; label: string;
+  lage: Lage; label: string; wertend: boolean; farbe: string; ton: string;
 }
 interface Kachel {
   route: string; titel: string; frage: string;
   spitze: Zeile; zeilen: Zeile[]; auffaellige: number;
 }
 
-/** Zonen der Metrik gehen vor; darunter entscheidet der Abstand zur Mitte. */
-function lageVon(m: MetricSnapshot): Lage {
-  const v = m.current.value;
-  const kauf = m.zones.length ? Math.max(...m.zones.map(z => z.below)) : null;
-  if (kauf !== null && v < kauf) return 'kauf';
-  if (m.hotAbove !== null && v > m.hotAbove) return 'warn';
-  if (v < 0.5 - RAND) return 'tief';
-  if (v > 0.5 + RAND) return 'hoch';
-  return 'neutral';
-}
-
+/** Die Einordnung kommt aus metrics-core/lage.ts — dieselbe Rechnung, nach der die Karte
+ *  ihren Text und der Generator seine Begründung schreibt. */
 function zeile(m: MetricSnapshot): Zeile {
-  const lage = lageVon(m);
+  const e = einordnenAngezeigt(m.kind, m.current.value, m.zones, m.hotAbove);
   return {
-    id: m.id, klasse: m.assetClass, name: m.label.split(' · ')[0], wert: m.current.value,
-    anzeige: formatValue(m.kind, m.current.value), lage, label: LABEL[lage],
+    id: m.id, klasse: m.assetClass, wert: m.current.value,
+    // Ohne Kurznamen der Teil vor „ · " — beim MVRV-Z-Score wäre das nur „Bitcoin".
+    name: m.short ?? m.label.split(' · ')[0],
+    anzeige: formatValue(m.kind, m.current.value),
+    lage: e.lage, label: lageWort(e, m.sym), wertend: e.wertend, ...farben(e.lage, e.wertend),
   };
 }
 
@@ -80,7 +70,7 @@ function zeile(m: MetricSnapshot): Zeile {
          steht, darf nie vom IntersectionObserver abhängen. -->
     <section class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:min-h-[calc(100svh-250px)] sm:[&>*]:h-full reveal-pending in-view">
       @for (k of kacheln(); track k.route; let i = $index) {
-        <a [routerLink]="k.route" [style.--ton]="ton[k.spitze.lage]" [style.animation-delay.ms]="i * 70"
+        <a [routerLink]="k.route" [style.--ton]="k.spitze.ton" [style.animation-delay.ms]="i * 70"
            class="kachel rise group flex flex-col justify-between gap-3 p-4 md:p-5 rounded-2xl
                   border border-line no-underline min-h-[196px] transition-colors hover:border-lo/50">
           <!-- Kopf -->
@@ -92,15 +82,15 @@ function zeile(m: MetricSnapshot): Zeile {
           <!-- Kernaussage: der auffälligste Wert des Bereichs -->
           <div>
             <div class="font-mono font-semibold leading-none tabular-nums
-                        text-[clamp(36px,5vw,52px)]" [style.color]="farbe[k.spitze.lage]">{{ k.spitze.anzeige }}</div>
+                        text-[clamp(36px,5vw,52px)]" [style.color]="k.spitze.farbe">{{ k.spitze.anzeige }}</div>
             <!-- Zustand und Name in einer Zeile: Die Zahl steht für sich, der Rest ordnet sie ein. -->
             <div class="flex items-center gap-2 mt-2.5 min-w-0">
-              <span class="inline-block w-2 h-2 rounded-full shrink-0" [style.background]="farbe[k.spitze.lage]"></span>
-              <span class="font-mono text-[12px] shrink-0" [style.color]="farbe[k.spitze.lage]">{{ k.spitze.label }}</span>
+              <span class="inline-block w-2 h-2 rounded-full shrink-0" [style.background]="k.spitze.farbe"></span>
+              <span class="font-mono text-[12px] shrink-0" [style.color]="k.spitze.farbe">{{ k.spitze.label }}</span>
               <span class="text-muted text-[12.5px] truncate">· {{ k.spitze.name }}</span>
             </div>
             <div class="skala mt-2" [style.--pos.%]="k.spitze.wert * 100">
-              <div class="skala-band"></div>
+              <div class="skala-band" [class.skala-neutral]="!k.spitze.wertend"></div>
               <div class="skala-marke"></div>
             </div>
           </div>
@@ -142,9 +132,9 @@ function zeile(m: MetricSnapshot): Zeile {
             @for (z of k.zeilen; track z.id) {
               <div class="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 items-baseline mb-3.5">
                 <span class="text-[13px] text-fg truncate">{{ z.name }}</span>
-                <span class="font-mono text-[13px] tabular-nums" [style.color]="farbe[z.lage]">{{ z.anzeige }}</span>
+                <span class="font-mono text-[13px] tabular-nums" [style.color]="z.farbe">{{ z.anzeige }}</span>
                 <div class="skala col-span-2" [style.--pos.%]="z.wert * 100">
-                  <div class="skala-band"></div>
+                  <div class="skala-band" [class.skala-neutral]="!z.wertend"></div>
                   <div class="skala-marke"></div>
                 </div>
               </div>
@@ -174,8 +164,6 @@ function zeile(m: MetricSnapshot): Zeile {
 })
 export class LandingComponent {
   private data = inject(MarketDataService);
-  protected readonly farbe = FARBE;
-  protected readonly ton = TON;
 
   protected readonly alle = computed<Zeile[]>(() => this.data.metrics().map(zeile));
 

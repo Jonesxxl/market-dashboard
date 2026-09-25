@@ -1,5 +1,5 @@
 import type { Config } from 'tailwindcss';
-import { PALETTE, SCALE_GRADIENT } from './metrics-core/palette';
+import { PALETTE, SCALE_GRADIENT, SCALE_GRADIENT_NEUTRAL } from './metrics-core/palette';
 
 /* Farben kommen aus metrics-core/palette.ts, damit Tailwind-Klassen, SVG-Charts und
    Snapshot-Daten nie auseinanderlaufen. Der Angular-Builder findet diese Datei selbst
@@ -9,7 +9,7 @@ export default {
   theme: {
     extend: {
       colors: { ...PALETTE },
-      backgroundImage: { skala: SCALE_GRADIENT },
+      backgroundImage: { skala: SCALE_GRADIENT, 'skala-neutral': SCALE_GRADIENT_NEUTRAL },
       fontFamily: {
         sans: ['"Space Grotesk"', 'system-ui', 'sans-serif'],
         mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],

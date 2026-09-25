@@ -2,9 +2,10 @@
  *  Deterministisch, regelbasiert, komplett client-seitig lauffähig.
  *  Erweiterbar an drei Stellen: ASSET_UNIVERSE (neue Assets), PROFILES (neue Profile),
  *  AllocationStrategy (neue Strategien). */
+import { einordnenAngezeigt, LAGE_WORT } from './lage';
 import { kindLabel } from './math';
 import { PALETTE } from './palette';
-import { MetricKind, MetricSnapshot } from './types';
+import { Lage, MetricKind, MetricSnapshot } from './types';
 
 /* ===== Investierbares Universum: Asset ↔ Metrik ===== */
 export type AssetClassKey = 'crypto' | 'metal' | 'equity' | 'cash';
@@ -55,6 +56,8 @@ export interface AllocationRow {
   signal: number;          // −1…+1 aus der Metrik (0 wenn keine Daten)
   metricValue: number | null;
   metricKind: MetricKind | null;
+  /** Dieselbe Einordnung wie auf Karte und Startseite; null ohne Metrik (Cash). */
+  lage: Lage | null;
   hasData: boolean;
   note: string;            // Ein-Satz-Begründung
 }
@@ -95,6 +98,7 @@ export const signalTiltStrategy: AllocationStrategy = {
         signal: m?.signal ?? 0,
         metricValue: m?.current.value ?? null,
         metricKind: m?.kind ?? null,
+        lage: m ? einordnenAngezeigt(m.kind, m.current.value, m.zones, m.hotAbove).lage : null,
         hasData: asset.metricId === null || !!m,
         note: '',
       };
@@ -144,11 +148,19 @@ export const signalTiltStrategy: AllocationStrategy = {
       } else if (!r.hasData) {
         r.note = 'Keine aktuellen Metrik-Daten — bleibt auf Basisgewicht (kein Tilt).';
       } else {
+        // Zwei getrennte Aussagen: wo der Wert steht (dasselbe Wort wie auf Karte und
+        // Startseite) und was das Regelwerk daraus macht. Die Neigung ist stufenlos, ein
+        // Wert im Mittelfeld kann den Anteil also trotzdem spürbar verschieben — vorher
+        // hieß das hier „historisch heiße Zone", während die Startseite „Mittelfeld" sagte.
         const v = r.metricValue!.toFixed(2);
         const name = kindLabel(r.metricKind ?? 'heat');
-        r.note = r.signal > 0.3 ? `${name} ${v} — historisch günstige Zone, wird übergewichtet.`
-          : r.signal < -0.3 ? `${name} ${v} — historisch heiße Zone, wird untergewichtet.`
-          : `${name} ${v} — neutraler Bereich, nahe Basisgewicht.`;
+        const lage = r.lage!;
+        const wo = (lage === 'kauf' || lage === 'warn' ? 'in der ' : '') + LAGE_WORT[lage];
+        const d = r.baseWeight > 0 ? r.targetWeight / r.baseWeight - 1 : 0;
+        const anteil = d > 0.15 ? 'Anteil steigt deutlich.' : d > 0.03 ? 'Anteil steigt leicht.'
+          : d < -0.15 ? 'Anteil sinkt deutlich.' : d < -0.03 ? 'Anteil sinkt leicht.'
+          : 'Anteil bleibt nahe der Basis.';
+        r.note = `${name} ${v} — ${wo}. ${anteil}`;
       }
       r.targetWeight = +r.targetWeight.toFixed(4);
       r.baseWeight = +r.baseWeight.toFixed(4);

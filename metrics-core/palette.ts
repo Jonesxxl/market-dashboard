@@ -19,3 +19,9 @@ export const PALETTE = {
 /** Farbband der Rail und der Skala auf der Startseite: 0 günstig … 1 heiß. */
 export const SCALE_GRADIENT =
   `linear-gradient(90deg, ${PALETTE.lo} 0%, ${PALETTE.lo} 15%, ${PALETTE.mid} 50%, ${PALETTE.hi} 88%)`;
+
+/** Farbband für Metriken ohne Zonen (Währungen): Es gibt kein günstig oder teuer, nur
+ *  „ungewöhnlich weit vom Trend" — deshalb hell an beiden Rändern, dunkel in der Mitte,
+ *  ohne die Wertungsfarben. */
+export const SCALE_GRADIENT_NEUTRAL =
+  `linear-gradient(90deg, ${PALETTE.muted} 0%, ${PALETTE.faint} 25%, ${PALETTE.line} 50%, ${PALETTE.faint} 75%, ${PALETTE.muted} 100%)`;

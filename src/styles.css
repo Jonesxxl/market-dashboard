@@ -97,6 +97,8 @@ body {
   background: theme('backgroundImage.skala');
   opacity: .75;
 }
+/* Ohne Zonen (Währungen): kein günstig/teuer, siehe SCALE_GRADIENT_NEUTRAL. */
+.skala-band.skala-neutral { background: theme('backgroundImage.skala-neutral'); }
 .skala-marke {
   position: absolute; top: 0; width: 3px; height: 12px; border-radius: 2px;
   background: theme('colors.fg'); box-shadow: 0 0 8px rgba(255, 255, 255, .35);

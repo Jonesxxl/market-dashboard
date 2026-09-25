@@ -107,7 +107,8 @@ export class ChartComponent {
   hostDirectives: [RevealDirective],
   template: `
     <div class="relative h-[58px] mx-0.5">
-      <div class="absolute left-0 right-0 top-[20px] h-[11px] rounded-md bg-skala"></div>
+      <div class="absolute left-0 right-0 top-[20px] h-[11px] rounded-md"
+           [class.bg-skala]="!neutral()" [class.bg-skala-neutral]="neutral()"></div>
       @for (t of ticks; track t) {
         <div class="absolute top-[36px] font-mono text-[10px] text-faint -translate-x-1/2"
              [style.left.%]="t * 100">{{ t.toFixed(2) }}</div>
@@ -147,6 +148,9 @@ export class RailComponent {
   ghosts = input<{ r: number; t: string }[]>([]);
   zones = input<Zone[]>([]);
   hotAbove = input<number | null>(null);
+  /** Band ohne Wertungsfarben — für Metriken ohne Zonen, bei denen es kein günstig oder
+   *  teuer gibt (Währungen). Ein türkis-rotes Band würde dort etwas behaupten. */
+  neutral = input(false);
   protected readonly ticks = [0, 0.25, 0.5, 0.75, 1];
   /** Knapp vor dem rechten Rand anhalten, damit der Marker bei 1,0 nicht übersteht. */
   protected readonly markerLeft = computed(() => Math.min(99.7, this.value() * 100));

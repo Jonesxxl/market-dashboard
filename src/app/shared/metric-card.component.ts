@@ -38,8 +38,8 @@ import { ChartComponent, RailComponent } from './ui';
         <span class="text-xs text-muted font-normal ml-2">{{ scaleLabel() }}</span>
       </div>
       <p class="text-[13.5px] text-muted mb-2 [&_b]:text-fg" [innerHTML]="m().interpret"></p>
-      <app-rail [value]="m().current.value" [ghosts]="m().extra?.ghosts ?? []"
-        [zones]="m().zones" [hotAbove]="m().hotAbove"/>
+      <app-rail [value]="shownValue()" [ghosts]="m().extra?.ghosts ?? []"
+        [zones]="m().zones" [hotAbove]="m().hotAbove" [neutral]="!wertend()"/>
       @if (chart(); as c) { <app-chart [svg]="c.svg" [tip]="c.tip"/> }
       @if (priceChart(); as pc) {
         <div class="mt-4 pt-4 border-t border-line">
@@ -56,7 +56,13 @@ export class MetricCardComponent {
   protected readonly isBootstrap = inject(MarketDataService).isBootstrap;
   m = input.required<MetricSnapshot>();
 
+  /** Kennt die Metrik Zonen? Ohne (Währungen) bleiben Farbband und Chart ohne Wertung. */
+  protected readonly wertend = computed(() => this.m().zones.length > 0 || this.m().hotAbove !== null);
+
   protected readonly value = computed(() => formatValue(this.m().kind, this.m().current.value));
+  /** Die Chips unter dem Farbband vergleichen mit der Zahl, die groß darüber steht — nicht
+   *  mit dem ungerundeten Wert. Sonst leuchtet „Kaufzone < 0.15" bei angezeigten 0.15. */
+  protected readonly shownValue = computed(() => +this.value());
 
   protected readonly scaleLabel = computed(() => {
     const m = this.m();
@@ -85,11 +91,10 @@ export class MetricCardComponent {
     const m = this.m();
     // Zonenlinien nur, wo die Metrik auch Zonen definiert — sonst behauptet der Chart
     // Kauf- und Warnbereiche, die es bei Währungen ausdrücklich nicht gibt.
-    const hasZones = m.zones.length > 0 || m.hotAbove !== null;
     return sparklineSvg({
       dates: m.series.months, values: m.series.values, color: m.hex,
       label: kindLabel(m.kind), prices: m.series.prices, unit: m.unit, dec: m.dec,
-      bands: hasZones ? (m.extra?.chartBands ?? [0.15, 0.85]) : null,
+      bands: this.wertend() ? (m.extra?.chartBands ?? [0.15, 0.85]) : null,
     });
   });
 

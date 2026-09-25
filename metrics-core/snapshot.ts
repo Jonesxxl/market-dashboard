@@ -1,11 +1,12 @@
 /** metrics-core · Snapshot-Builder. Läuft im täglichen Cron; das Frontend konsumiert nur das JSON. */
+import { einordnenAngezeigt } from './lage';
 import { computeHeat, equalWeightIndex, fmt, monthly, percentileRank, stats } from './math';
 import { defaultSignal, REGISTRY } from './metrics';
 import { PALETTE } from './palette';
 import { fetchMarket } from './sources';
 import {
-  BearSnapshot, BubbleSnapshot, FetchContext, MetricResult, MetricSnapshot,
-  RatioSnapshot, Snapshot,
+  BearSnapshot, BubbleSnapshot, FetchContext, Lage, MetricResult, MetricSnapshot,
+  RatioSnapshot, Snapshot, Zone,
 } from './types';
 
 /** Ergebnisse der Registry-Metriken nach ID — Grundlage der abgeleiteten Blöcke. */
@@ -26,17 +27,20 @@ export async function buildSnapshot(ctx: FetchContext): Promise<Snapshot> {
     if (s.status === 'rejected') { failed.push(REGISTRY[i].id); console.warn(REGISTRY[i].id, s.reason); return; }
     const { def, result } = s.value;
     results.set(def.id, result);
+    const value = +result.current.value.toFixed(3);
     metrics.push({
-      id: def.id, label: def.label, sym: def.sym, assetClass: def.assetClass, kind: def.kind,
+      id: def.id, label: def.label, short: def.short, sym: def.sym, assetClass: def.assetClass, kind: def.kind,
       unit: def.unit, dec: def.dec, hex: def.hex,
       current: {
         ...result.current,
         price: +result.current.price.toFixed(def.dec + 2),
         sma: +result.current.sma.toFixed(def.dec + 2),
-        value: +result.current.value.toFixed(3),
+        value,
       },
       signal: defaultSignal(result.current.value),
-      interpret: def.interpret(result),
+      // Eingeordnet wird der Wert, wie ihn die Seite zeigt — sonst hieße 0,149 im Text
+      // „Kaufzone", während daneben 0,15 steht.
+      interpret: def.interpret(result, einordnenAngezeigt(def.kind, value, def.zones, def.hotAbove)),
       zones: def.zones, hotAbove: def.hotAbove,
       series: monthly(result.dates, result.values, result.prices),
       stats: stats(result.prices),
@@ -137,6 +141,14 @@ function buildBear(results: Results, failed: string[]): BearSnapshot | null {
 }
 
 /* ===== KI-Blasen-Score (inkl. Basket + rel. Stärke, hier berechnet) ===== */
+/** Lage des KI-Korbs in Worten — dieselbe Einordnung wie bei allen Registry-Metriken. */
+const KI_KORB: Record<Lage, string> = {
+  warn: '<b>Der Korb läuft historisch heiß</b> — das ist die Warnzone.',
+  hoch: 'Der Korb läuft <b>ungewöhnlich heiß</b>, aber noch nicht in der Warnzone.',
+  neutral: 'Der Korb bewegt sich im normalen Bereich seiner Geschichte.',
+  tief: 'Der Korb steht <b>ungewöhnlich tief</b>, aber noch nicht in der Kaufzone.',
+  kauf: '<b>Der Korb ist historisch ausgewaschen</b> — das ist die Kaufzone.',
+};
 async function buildBubble(ctx: FetchContext, results: Results,
   failed: string[]): Promise<{ bubble: BubbleSnapshot; basket: MetricSnapshot } | null> {
   const n = results.get('ndx-heat');
@@ -157,13 +169,16 @@ async function buildBubble(ctx: FetchContext, results: Results,
     const rsPct = percentileRank(rsSorted, rsVals[rsVals.length - 1]);
 
     // Basket als vollwertige Metrik in den Snapshot heben (Registry-Format)
+    const zones: Zone[] = [{ label: 'Kaufzone', text: '< 0.15', below: 0.15 }];
+    const value = +basket.current.value.toFixed(3);
     const basketSnap: MetricSnapshot = {
       id: 'ai-basket-heat', label: 'KI-Basket · NVDA, MSFT, META, AMD, AVGO (gleichgewichtet)',
       sym: 'AI-5', assetClass: 'equity', kind: 'heat', unit: '× Start', dec: 2, hex: PALETTE.ai,
-      current: { ...basket.current, value: +basket.current.value.toFixed(3), price: +basket.current.price.toFixed(2), sma: +basket.current.sma.toFixed(2) },
+      current: { ...basket.current, value, price: +basket.current.price.toFixed(2), sma: +basket.current.sma.toFixed(2) },
       signal: defaultSignal(basket.current.value),
-      interpret: `Fünf KI-Schwergewichte zu einem Korb gemittelt, damit keine Einzelaktie das Bild verzerrt. ${basket.current.value > 0.85 ? 'Der Korb läuft historisch heiß.' : basket.current.value < 0.15 ? 'Der Korb ist historisch ausgewaschen.' : 'Der Korb bewegt sich im normalen Bereich seiner Geschichte.'}`,
-      zones: [{ label: 'Kaufzone', text: '< 0.15', below: 0.15 }], hotAbove: 0.85,
+      interpret: 'Fünf KI-Schwergewichte zu einem Korb gemittelt, damit keine Einzelaktie das Bild verzerrt. '
+        + KI_KORB[einordnenAngezeigt('heat', value, zones, 0.85).lage],
+      zones, hotAbove: 0.85,
       series: monthly(basket.dates, basket.values, basket.prices),
       stats: stats(basket.prices),
     };

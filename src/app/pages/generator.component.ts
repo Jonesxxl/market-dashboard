@@ -85,8 +85,13 @@ type Mode = 'dca' | 'rebalance';
     <!-- Zielgewichte -->
     @if (rows(); as R) {
       <div class="card p-6 mb-4">
-        <h2 class="card-title mb-4">
+        <h2 class="card-title mb-2">
           Zielgewichte · {{ profile().label }} · Strategie „{{ strategyLabel }}"</h2>
+        <!-- Ohne diesen Satz läse sich „im Mittelfeld. Anteil sinkt deutlich." wie ein Widerspruch. -->
+        <p class="text-[12.5px] text-muted leading-relaxed mb-4 max-w-2xl">Die Gewichte verschieben sich
+          stufenlos: Jeder Wert unter der Mitte (0,5) vergrößert den Anteil, jeder darüber verkleinert ihn —
+          je weiter weg, desto stärker. Auch ein Asset im Mittelfeld kann also schon spürbar Gewicht verlieren
+          oder gewinnen.</p>
         @for (r of R; track r.asset.id) {
           <div class="mb-3.5">
             <div class="flex justify-between items-baseline gap-2 flex-wrap">
