@@ -9,8 +9,8 @@
  *  Die Zonen selbst kommen aus der Metrik (`zones`, `hotAbove` in der Registry) — dieselben
  *  Werte, nach denen die Chips unter dem Farbband aufleuchten. Auch die Vergleiche sind
  *  dieselben: Kaufzone heißt `value < below`, Warnzone `value > hotAbove`. */
-import { formatValue } from './math';
-import { Einordnung, Lage, MetricKind, Zone } from './types';
+import { roundValue } from './math';
+import { Einordnung, Lage, MetricKind, MetricSnapshot, Zone } from './types';
 
 /** Ab diesem Abstand von der Mitte gilt ein Wert außerhalb der Zonen als ungewöhnlich. */
 export const RAND = 0.25;
@@ -33,7 +33,7 @@ export function einordnen(value: number, zones: Zone[], hotAbove: number | null)
  *  Kaufzone" neben dem Chip „Kaufzone < 0.15": Der Wert war 0,149, angezeigt als 0,15.
  *  Wer liest, rechnet mit der Zahl, die er sieht. */
 export function einordnenAngezeigt(kind: MetricKind, value: number, zones: Zone[], hotAbove: number | null): Einordnung {
-  return einordnen(+formatValue(kind, value), zones, hotAbove);
+  return einordnen(roundValue(kind, value), zones, hotAbove);
 }
 
 export const LAGE_WORT: Record<Lage, string> = {
@@ -49,4 +49,27 @@ export function lageWort(e: Einordnung, sym: string): string {
   if (e.wertend || (e.lage !== 'tief' && e.lage !== 'hoch')) return LAGE_WORT[e.lage];
   const basis = sym.split('/')[0];
   return `${WAEHRUNG[basis] ?? basis} ungewöhnlich ${e.lage === 'tief' ? 'schwach' : 'stark'}`;
+}
+
+/** Die Zahl in einem Satz, für die Kacheln der Startseite. „0,11" sagt für sich nichts.
+ *
+ *  Heat ist wörtlich ein Perzentil: 0,11 heißt, nur an 11 % aller Tage lag der Kurs noch
+ *  weiter unter seinem Trend. Bei Kennzahlen wie dem MVRV-Z-Score (`extra.priceLabel`) ist es
+ *  das Perzentil der Kennzahl selbst. Risk dagegen ist kein Perzentil, sondern eine Skala
+ *  zwischen dem Niveau früherer Zyklustiefs (0) und -hochs (1) — der Satz sagt deshalb
+ *  „des Wegs", nicht „aller Tage".
+ *
+ *  Bewusst ohne Namen als Satzsubjekt: „lag Gold", aber „lag *der* Krypto-Korb" — die Namen
+ *  stehen ohnehin direkt darüber. */
+export function klartext(m: Pick<MetricSnapshot, 'kind' | 'current' | 'extra'>): string {
+  const v = m.current.value;
+  if (m.kind === 'risk') return `Bei ${Math.round(v * 100)} % des Wegs von früheren Zyklustiefs zu früheren Zyklushochs.`;
+  const unten = v < 0.5;
+  const anteil = unten ? v : 1 - v;
+  const tage = anteil < 0.005 ? 'an weniger als 1 % aller Tage'
+    : `${anteil < 0.25 ? 'nur ' : ''}an ${Math.round(anteil * 100)} % aller Tage`;
+  const label = m.extra?.priceLabel;
+  return label
+    ? `${label} noch ${unten ? 'niedriger' : 'höher'}: ${tage}.`
+    : `Noch weiter ${unten ? 'unter' : 'über'} dem Trend: ${tage}.`;
 }

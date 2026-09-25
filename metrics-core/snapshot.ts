@@ -173,6 +173,7 @@ async function buildBubble(ctx: FetchContext, results: Results,
     const value = +basket.current.value.toFixed(3);
     const basketSnap: MetricSnapshot = {
       id: 'ai-basket-heat', label: 'KI-Basket · NVDA, MSFT, META, AMD, AVGO (gleichgewichtet)',
+      short: 'KI-Aktien-Korb',
       sym: 'AI-5', assetClass: 'equity', kind: 'heat', unit: '× Start', dec: 2, hex: PALETTE.ai,
       current: { ...basket.current, value, price: +basket.current.price.toFixed(2), sma: +basket.current.sma.toFixed(2) },
       signal: defaultSignal(basket.current.value),
@@ -190,7 +191,7 @@ async function buildBubble(ctx: FetchContext, results: Results,
     ];
     const conc = results.get('conc-heat');
     const cred = results.get('credit-heat');
-    if (conc) comps.push(['Konzentration', conc.current.value, 'Wie stark dominieren die Schwergewichte den S&P?']);
+    if (conc) comps.push(['Abhängigkeit von Großkonzernen', conc.current.value, 'Wie stark dominieren die Schwergewichte den S&P?']);
     if (cred) comps.push(['Kredit-Sorglosigkeit', cred.current.value, 'Wie sorglos ist der Anleihemarkt gegenüber Risiko?']);
     return {
       bubble: {

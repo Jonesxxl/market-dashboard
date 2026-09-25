@@ -63,7 +63,7 @@ export class ChartTipDirective {
       // Preis-Chart: v trägt nur die Position auf der eigenen Skala, angezeigt wird p.
       tip.textContent = `${d.m[i]} · ${d.l} ${pTxt}`;
     } else {
-      const vTxt = d.f === 'pct' ? Math.round(d.v[i] * 100) + ' %' : d.v[i].toFixed(2);
+      const vTxt = d.f === 'pct' ? Math.round(d.v[i] * 100) + ' %' : fmt(d.v[i], 2);
       tip.textContent = `${d.m[i]} · ${d.l} ${vTxt}${pTxt ? ' · ' + pTxt : ''}`;
     }
     tip.style.display = 'block';
@@ -111,7 +111,7 @@ export class ChartComponent {
            [class.bg-skala]="!neutral()" [class.bg-skala-neutral]="neutral()"></div>
       @for (t of ticks; track t) {
         <div class="absolute top-[36px] font-mono text-[10px] text-faint -translate-x-1/2"
-             [style.left.%]="t * 100">{{ t.toFixed(2) }}</div>
+             [style.left.%]="t * 100">{{ fmt(t, 2) }}</div>
       }
       @for (gh of ghosts(); track gh.t) {
         <div class="absolute top-[16px] w-0.5 h-[19px] bg-muted opacity-45" [style.left.%]="gh.r * 100">
@@ -128,7 +128,7 @@ export class ChartComponent {
           <div class="font-mono text-[11px] px-2.5 py-1 rounded-lg border"
                [class.border-lo]="value() < z.below" [class.text-lo]="value() < z.below"
                [class.border-line]="value() >= z.below" [class.text-muted]="value() >= z.below">
-            {{ z.label }} {{ z.text }}
+            {{ z.label }} &lt; {{ fmt(z.below, 2) }}
           </div>
         }
         @let hot = hotAbove();
@@ -136,7 +136,7 @@ export class ChartComponent {
           <div class="font-mono text-[11px] px-2.5 py-1 rounded-lg border"
                [class.border-hi]="value() > hot" [class.text-hi]="value() > hot"
                [class.border-line]="value() <= hot" [class.text-muted]="value() <= hot">
-            Überhitzt &gt; {{ hot.toFixed(2) }}
+            Überhitzt &gt; {{ fmt(hot, 2) }}
           </div>
         }
       </div>
@@ -152,6 +152,7 @@ export class RailComponent {
    *  teuer gibt (Währungen). Ein türkis-rotes Band würde dort etwas behaupten. */
   neutral = input(false);
   protected readonly ticks = [0, 0.25, 0.5, 0.75, 1];
+  protected readonly fmt = fmt;
   /** Knapp vor dem rechten Rand anhalten, damit der Marker bei 1,0 nicht übersteht. */
   protected readonly markerLeft = computed(() => Math.min(99.7, this.value() * 100));
 }

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { datum } from '../../../metrics-core/math';
 import { PALETTE } from '../../../metrics-core/palette';
 import { ChartComponent } from '../shared/ui';
 import { MetricListComponent } from '../shared/metric-list.component';
@@ -40,7 +41,7 @@ interface BearVm {
           <app-chart [svg]="ch.svg" [tip]="ch.tip"/>
         }
         <p class="font-mono text-[11.5px] text-faint mt-2.5">
-          Beide Kurven in Prozent des jeweiligen Allzeithochs, Tag 0 = ATH, identische Skala. Die gelbe Linie
+          Beide Kurven in Prozent des jeweiligen Allzeithochs, Tag 0 = Allzeithoch, identische Skala. Die gelbe Linie
           markiert in beiden Charts denselben Zyklustag. Verläuft die orange Kurve flacher als die graue, fällt
           dieser Zyklus milder aus (Drawdowns pro Zyklus: −84 % → −76 % → ?).
         </p>
@@ -62,7 +63,7 @@ interface BearVm {
               <tbody>
                 @for (row of levels; track row.r) {
                   <tr [class.text-lo]="isNow(m.current.value, row.r)">
-                    <td class="py-1.5 px-2 border-b border-panel2">{{ row.r.toFixed(2) }}{{ isNow(m.current.value, row.r) ? ' ◂ aktuell' : '' }}</td>
+                    <td class="py-1.5 px-2 border-b border-panel2">{{ fmt(row.r, 2) }}{{ isNow(m.current.value, row.r) ? ' ◂ aktuell' : '' }}</td>
                     <td class="py-1.5 px-2 border-b border-panel2 text-right">{{ fmt(row.price) }} $</td>
                     <td class="py-1.5 px-2 border-b border-panel2 text-right">{{ fmt(100 * (row.price / m.current.price - 1), 1) }} %</td>
                   </tr>
@@ -93,14 +94,14 @@ export class CryptoComponent {
     const p = s.projected;
     return {
       chips: [
-        { k: `2017/18 an Tag ${b.todayDay}`, v: Math.round(s.at18 * 100) + ' %', sub: 'des ATH', color: PALETTE.fg },
-        { k: `2025/26 heute (Tag ${b.todayDay})`, v: Math.round(s.atNow * 100) + ' %', sub: 'des ATH', color: PALETTE.btc },
-        { k: 'Boden 2018', v: 'Tag ' + s.bottomDay, sub: `${Math.round(s.bottomPct * 100)} % · ${s.bottomDate}`, color: PALETTE.fg },
-        { k: 'Auf heute projiziert', v: `${p.slice(8, 10)}.${p.slice(5, 7)}.${p.slice(0, 4)}`, sub: 'möglicher Boden', color: PALETTE.mid },
+        { k: `2017/18 an Tag ${b.todayDay}`, v: Math.round(s.at18 * 100) + ' %', sub: 'des Allzeithochs', color: PALETTE.fg },
+        { k: `2025/26 heute (Tag ${b.todayDay})`, v: Math.round(s.atNow * 100) + ' %', sub: 'des Allzeithochs', color: PALETTE.btc },
+        { k: 'Boden 2018', v: 'Tag ' + s.bottomDay, sub: `${Math.round(s.bottomPct * 100)} % · ${datum(s.bottomDate)}`, color: PALETTE.fg },
+        { k: 'Auf heute projiziert', v: datum(p), sub: 'möglicher Boden', color: PALETTE.mid },
       ],
       charts: b.cycles.map((cy, i) => ({
         name: cy.name, hex: cy.hex,
-        ath: `ATH ${fmt(cy.peak)} $ am ${cy.peakDate}`,
+        ath: `Allzeithoch ${fmt(cy.peak)} $ am ${datum(cy.peakDate)}`,
         ...bearChartSvg(cy, 'bg' + i, b.maxDays, b.todayDay),
       })),
     };

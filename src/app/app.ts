@@ -131,11 +131,14 @@ export class AppComponent {
 
   protected readonly stamp = computed(() => {
     const g = this.data.generatedAt();
-    return g ? 'Snapshot vom ' + new Date(g).toLocaleString('de-DE') : '–';
+    if (!g) return '–';
+    const d = new Date(g);
+    return `Daten vom ${d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}, `
+      + `${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`;
   });
   protected readonly bootstrapDate = computed(() => {
     const g = this.data.generatedAt();
-    return g ? new Date(g).toLocaleDateString('de-DE') : '–';
+    return g ? new Date(g).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '–';
   });
   protected readonly isError = computed(() =>
     this.data.error() !== null || this.data.failed().length > 0 || this.data.ageDays() > 2);

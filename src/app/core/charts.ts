@@ -1,4 +1,4 @@
-import { fmt } from '../../../metrics-core/math';
+import { datum, fmt, monat } from '../../../metrics-core/math';
 import { PALETTE } from '../../../metrics-core/palette';
 import { BearCycle } from '../../../metrics-core/types';
 
@@ -34,7 +34,6 @@ function cutoff(years: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-const komma = (n: number): string => n.toFixed(2).replace('.', ',');
 
 /** Länge des Streckenzugs in Nutzerkoordinaten. Wird für stroke-dasharray gebraucht:
  *  Nur mit der echten Länge läuft die Einzeichnung gleichmäßig durch statt am Ende
@@ -120,7 +119,7 @@ export function sparklineSvg({
   const x = (i: number) => f.l + (f.w - f.l - f.r) * i / (pts.length - 1);
   const y = (v: number) => f.t + (f.h - f.t - f.b) * (1 - v);
 
-  let g = gridLine(f, y(0), '0') + gridLine(f, y(0.5), '0.5') + gridLine(f, y(1), '1');
+  let g = gridLine(f, y(0), '0') + gridLine(f, y(0.5), '0,5') + gridLine(f, y(1), '1');
   // Nur wo die Metrik wirklich Zonen kennt. Währungen haben keine — dort wären die
   // Linien samt Beschriftung eine Behauptung, die der Seitentext ausdrücklich verneint.
   // Die Schwellen kommen von der Metrik, weil sie je nach Kennzahl anders liegen.
@@ -128,13 +127,13 @@ export function sparklineSvg({
     g += dashedLine(f, y(bands[0]), PALETTE.lo, '3 4', '.55') + dashedLine(f, y(bands[1]), PALETTE.hi, '3 4', '.55');
   }
   g += yearMarks(f, months, x);
-  g += drawnLine(f, pts.length, x, i => y(pts[i]), color, pts[pts.length - 1].toFixed(2));
-  g += caption(f, `${label} · ${years} Jahre${bands ? ` · gestrichelt: Kauf ${komma(bands[0])} / Warnung ${komma(bands[1])}` : ''}`);
+  g += drawnLine(f, pts.length, x, i => y(pts[i]), color, fmt(pts[pts.length - 1], 2));
+  g += caption(f, `${label} · ${years} Jahre${bands ? ` · gestrichelt: Kauf ${fmt(bands[0], 2)} / Warnung ${fmt(bands[1], 2)}` : ''}`);
 
   return {
     svg: svgDoc(f, `${label}-Verlauf, letzte ${years} Jahre`, g),
     tip: {
-      m: months, v: pts.map(v => +v.toFixed(3)),
+      m: months.map(monat), v: pts.map(v => +v.toFixed(3)),
       p: prices ? ex.map(v => +v.toFixed(dec)) : null, l: label, u: unit, frame: f,
     },
   };
@@ -194,11 +193,11 @@ export function priceSparklineSvg({
 
   return {
     svg: svgDoc(f, `${label}-Verlauf, letzte ${years} Jahre`, g),
-    tip: { m: ms, v: pts.map(norm), p: pts.map(v => +v.toFixed(dec)), l: label, u: unit, f: 'none', frame: f },
+    tip: { m: ms.map(monat), v: pts.map(norm), p: pts.map(v => +v.toFixed(dec)), l: label, u: unit, f: 'none', frame: f },
   };
 }
 
-/** Bärenmarkt-Chart aus vorberechnetem Zyklus (Snapshot): Kurs in % des ATH über Tage seit ATH. */
+/** Bärenmarkt-Chart aus vorberechnetem Zyklus (Snapshot): Kurs in % des Allzeithochs über Tage seitdem. */
 export function bearChartSvg(cy: BearCycle, gid: string, maxDays: number, todayDay: number | null): ChartSvg {
   const f: Frame = { w: 460, h: 150, l: 36, r: 14, t: 18, b: 24 };
   const days = cy.days; const vals = cy.pct; const color = cy.hex;
@@ -234,8 +233,8 @@ export function bearChartSvg(cy: BearCycle, gid: string, maxDays: number, todayD
   return {
     svg: svgDoc(f, 'Bärenmarkt-Verlauf', g),
     tip: {
-      m: days.map((dd, i) => `Tag ${dd} · ${cy.dates[i]}`),
-      v: vals, p: cy.prices, l: 'vom ATH', u: '$', f: 'pct',
+      m: days.map((dd, i) => `Tag ${dd} · ${datum(cy.dates[i])}`),
+      v: vals, p: cy.prices, l: 'vom Allzeithoch', u: '$', f: 'pct',
       s: days[days.length - 1] / maxDays, frame: f,
     },
   };

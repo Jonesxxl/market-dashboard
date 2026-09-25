@@ -14,7 +14,7 @@
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { fmt, formatValue, kindLabel } from '../metrics-core/math';
+import { datum, fmt, formatValue, kindLabel, roundValue } from '../metrics-core/math';
 import { HOME, ORIGIN, PAGES, PagePath } from '../metrics-core/site';
 import { MetricSnapshot, Snapshot } from '../metrics-core/types';
 
@@ -34,10 +34,10 @@ interface Page {
 function tabelle(ms: MetricSnapshot[]): string {
   const zeilen = ms.map(m => `<tr>
       <td>${esc(m.label)}</td><td>${esc(m.sym)}</td><td>${wert(m)}</td>
-      <td>${fmt(m.current.price, m.dec)}${m.unit ? ' ' + esc(m.unit) : ''}</td><td>${m.current.date}</td>
+      <td>${fmt(m.current.price, m.dec)}${m.unit ? ' ' + esc(m.unit) : ''}</td><td>${datum(m.current.date)}</td>
     </tr>`).join('\n    ');
   return `<table>
-    <caption>Aktuelle Kennzahlen — Stand ${ms[0]?.current.date ?? ''}</caption>
+    <caption>Aktuelle Kennzahlen — Stand ${ms[0] ? datum(ms[0].current.date) : ''}</caption>
     <thead><tr><th>Kennzahl</th><th>Kürzel</th><th>Wert (0–1)</th><th>Kurs</th><th>Stand</th></tr></thead>
     <tbody>
     ${zeilen}
@@ -51,7 +51,7 @@ function deutungen(ms: MetricSnapshot[]): string {
     <p>${richt(m.interpret)}</p>
     <p>Kurs ${fmt(m.current.price, m.dec)}${m.unit ? ' ' + esc(m.unit) : ''} ·
        52-Wochen-Spanne ${fmt(m.stats.lo52, m.dec)}–${fmt(m.stats.hi52, m.dec)} ·
-       Stand ${m.current.date}${m.current.staleDays > 3 ? ` (${m.current.staleDays} Tage alt)` : ''}.</p>
+       Stand ${datum(m.current.date)}${m.current.staleDays > 3 ? ` (${m.current.staleDays} Tage alt)` : ''}.</p>
   </section>`).join('\n  ');
 }
 
@@ -96,13 +96,13 @@ function seiten(snap: Snapshot): Page[] {
   const ratioText = snap.derived.ratios.length ? `<section>
     <h2>Verhältnisse als Kontraindikator</h2>
     ${snap.derived.ratios.map(r => `<p><strong>${esc(r.title)}:</strong> aktuell ${fmt(r.cur, 2)},
-      Median ${fmt(r.med, 2)}, Perzentil ${r.pct.toFixed(2)}. ${richt(r.note)}</p>`).join('\n    ')}
+      Median ${fmt(r.med, 2)}, Perzentil ${fmt(r.pct, 2)}. ${richt(r.note)}</p>`).join('\n    ')}
   </section>` : '';
 
   const bubbleText = b ? `<section>
-    <h2>KI-Blasen-Score: ${b.score.toFixed(2)}</h2>
+    <h2>KI-Blasen-Score: ${fmt(b.score, 2)}</h2>
     <p>Der Score mittelt ${b.comps.length} Perzentile. Bestandteile:</p>
-    <ul>${b.comps.map(c => `<li>${esc(c[0])}: ${c[1].toFixed(2)} — ${esc(c[2])}</li>`).join('')}</ul>
+    <ul>${b.comps.map(c => `<li>${esc(c[0])}: ${fmt(c[1], 2)} — ${esc(c[2])}</li>`).join('')}</ul>
   </section>` : '';
 
   return [
@@ -125,7 +125,7 @@ function seiten(snap: Snapshot): Page[] {
       metrics: metalle, extra: ratioText,
     },
     {
-      ...meta('nasdaq-ki', b ? `KI-Blasen-Score ${b.score.toFixed(2)}` : undefined),
+      ...meta('nasdaq-ki', b ? `KI-Blasen-Score ${fmt(b.score, 2)}` : undefined),
       h1: 'Nasdaq und KI: Wie weit ist die Bewertung von ihrem eigenen Trend entfernt?',
       lead: 'Der KI-Blasen-Score mittelt mehrere Perzentile zu einer Zahl zwischen 0 und 1. Er misst nicht, ob eine Blase platzt, sondern wie ungewöhnlich der heutige Zustand gegenüber der eigenen Vergangenheit ist.',
       metrics: ki, extra: bubbleText,
@@ -169,7 +169,8 @@ function jsonLd(p: Page, snap: Snapshot): string {
       variableMeasured: p.metrics.map(m => ({
         '@type': 'PropertyValue', name: `${m.label} (${m.sym})`,
         description: `${m.kind === 'risk' ? 'Zyklus-Risk' : 'Heat-Perzentil'}, 0 bis 1`,
-        value: +wert(m), measurementTechnique: m.kind === 'risk'
+        // Maschinenlesbar bleibt die Zahl eine Zahl — das Komma gehört nur in die Anzeige.
+        value: roundValue(m.kind, m.current.value), measurementTechnique: m.kind === 'risk'
           ? 'min-max-normiertes ln(Kurs/gleitender Durchschnitt) × Tagesindex^exp'
           : 'historisches Perzentil von ln(Kurs/SMA200)',
       })),
@@ -182,7 +183,7 @@ function inhalt(p: Page, snap: Snapshot): string {
   const teile = [
     `<h1>${esc(p.h1)}</h1>`,
     `<p>${esc(p.lead)}</p>`,
-    `<p>Stand der Daten: <time datetime="${snap.generatedAt}">${snap.generatedAt.slice(0, 10)}</time>. Täglich neu berechnet.</p>`,
+    `<p>Stand der Daten: <time datetime="${snap.generatedAt}">${datum(snap.generatedAt)}</time>. Täglich neu berechnet.</p>`,
   ];
   if (p.metrics?.length) { teile.push(tabelle(p.metrics)); teile.push(`<h2>Was die einzelnen Werte bedeuten</h2>`); teile.push(deutungen(p.metrics)); }
   if (p.extra) teile.push(p.extra);

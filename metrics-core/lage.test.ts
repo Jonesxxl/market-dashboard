@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { signalTiltStrategy, ASSET_UNIVERSE, PROFILES } from './allocation';
-import { einordnen, einordnenAngezeigt, lageWort } from './lage';
+import { einordnen, einordnenAngezeigt, klartext, lageWort } from './lage';
 import { defaultSignal } from './math';
 import { REGISTRY } from './metrics';
 import { MetricResult, MetricSnapshot, Zone } from './types';
@@ -103,4 +103,15 @@ test('Generator: Begründung nennt dieselbe Lage wie Karte und Startseite', () =
   // beides steht getrennt da, statt „historisch heiße Zone" zu behaupten.
   assert.match(note('ndx'), /im Mittelfeld\. Anteil sinkt/);
   assert.match(note('gold'), /in der Kaufzone\. Anteil steigt/);
+});
+
+test('klartext: die Zahl in einem Satz', () => {
+  const m = (kind: 'heat' | 'risk', value: number, extra?: MetricSnapshot['extra']) =>
+    ({ kind, current: { value }, extra }) as unknown as MetricSnapshot;
+  assert.equal(klartext(m('heat', 0.112)), 'Noch weiter unter dem Trend: nur an 11 % aller Tage.');
+  assert.equal(klartext(m('heat', 0.92)), 'Noch weiter über dem Trend: nur an 8 % aller Tage.');
+  assert.equal(klartext(m('heat', 0.64)), 'Noch weiter über dem Trend: an 36 % aller Tage.');
+  assert.equal(klartext(m('heat', 0.003)), 'Noch weiter unter dem Trend: an weniger als 1 % aller Tage.');
+  assert.equal(klartext(m('heat', 0.41, { priceLabel: 'Z-Score' })), 'Z-Score noch niedriger: an 41 % aller Tage.');
+  assert.equal(klartext(m('risk', 0.447)), 'Bei 45 % des Wegs von früheren Zyklustiefs zu früheren Zyklushochs.');
 });

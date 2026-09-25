@@ -52,7 +52,7 @@ function riskInterpret(sym: string, e: Einordnung, zones: Zone[]): string {
 function fxInterpret(up: string, down: string, r: MetricResult, seitJahr: string, e: Einordnung): string {
   const h = r.current.value;
   const abw = 100 * (r.current.price / r.current.sma - 1);
-  return `${abw >= 0 ? up : down} Der Kurs liegt <b>${fmt(Math.abs(abw), 1)} % ${abw >= 0 ? 'über' : 'unter'}</b> dem 200-Tage-Schnitt — ${h < 0.5
+  return `${abw >= 0 ? up : down} Der Kurs liegt <b>${fmt(Math.abs(abw), 1)} % ${abw >= 0 ? 'über' : 'unter'}</b> dem 200-Tage-Durchschnitt — ${h < 0.5
     ? 'nur an <b>' + round(h * 100) + ' %</b> aller Tage seit ' + seitJahr + ' war die Abweichung nach unten noch größer.'
     : 'nur an <b>' + round((1 - h) * 100) + ' %</b> aller Tage seit ' + seitJahr + ' war die Abweichung nach oben noch größer.'}`
     + lageSatz(e)
@@ -100,11 +100,12 @@ const crypto: MetricDefinition[] = [
     fetch: ctx => fetchCrypto('btc', 'bitcoin', 'BTC-USD', ctx),
     compute: rows => computeRisk(rows, 'btc'),
     interpret: (_, e) => riskInterpret('BTC', e, BTC_ZONES),
-    // Marken aus der v2-Kalibrierung neu bestimmt. Die Böden 2015, 2018 und 2022 liegen mit
+    // Marken aus der v2-Kalibrierung neu bestimmt. Die Tiefs 2015, 2018 und 2022 liegen mit
     // 0.099/0.110/0.091 so dicht beieinander, dass getrennte Marken sich überlappen.
+    // Ausgeschrieben statt „ATH 25" — Kürzel versteht nur, wer sie schon kennt.
     extra: riskExtra('btc', [
-      { r: 0.10, t: 'Böden 15/18/22' },
-      { r: 0.56, t: 'ATH 25' }, { r: 0.88, t: 'ATH 21' },
+      { r: 0.10, t: 'Tiefs 2015/18/22' },
+      { r: 0.56, t: 'Hoch 2025' }, { r: 0.88, t: 'Hoch 2021' },
     ]),
   },
   {
@@ -115,8 +116,8 @@ const crypto: MetricDefinition[] = [
     compute: rows => computeRisk(rows, 'eth'),
     interpret: (_, e) => riskInterpret('ETH', e, ETH_ZONES),
     extra: riskExtra('eth', [
-      { r: 0.00, t: 'Boden 18' }, { r: 0.09, t: 'Boden 22' },
-      { r: 0.71, t: 'ATH 25' }, { r: 0.88, t: 'ATH 18' },
+      { r: 0.00, t: 'Tief 2018' }, { r: 0.09, t: 'Tief 2022' },
+      { r: 0.71, t: 'Hoch 2025' }, { r: 0.88, t: 'Hoch 2018' },
     ]),
   },
 ];
@@ -171,6 +172,7 @@ const DAI_TOP_HOLDINGS: [string, string, string?][] = [
 crypto.push({
   id: 'dai-basket-heat',
   label: 'Digital-Asset-Basket · Anlehnung S&P Pantera Digital Asset Index',
+  short: 'Krypto-Korb ohne Bitcoin',
   sym: 'DAI-Proxy', assetClass: 'crypto', kind: 'heat', unit: '$', dec: 0, hex: '#6FCF97',
   zones: [{ label: 'Kaufzone', text: '< 0.15', below: 0.15 }], hotAbove: 0.85,
   /** Der Korb ist ein gleichgewichteter Index ohne eigenen Marktpreis. Damit er trotzdem
@@ -248,13 +250,14 @@ const equity: MetricDefinition[] = [
     interpret: (r, e) => {
       const abw = 100 * (r.current.price / r.current.sma - 1);
       const h = r.current.value;
-      return `Der Nasdaq 100 notiert <b>${fmt(Math.abs(abw), 1)} % ${abw >= 0 ? 'über' : 'unter'}</b> seinem 200-Tage-Durchschnitt. Heat ${h.toFixed(2)} heißt: ${h < 0.5
+      return `Der Nasdaq 100 notiert <b>${fmt(Math.abs(abw), 1)} % ${abw >= 0 ? 'über' : 'unter'}</b> seinem 200-Tage-Durchschnitt. Heat ${fmt(h, 2)} heißt: ${h < 0.5
         ? 'Nur an ' + round(h * 100) + ' % aller Tage seit 1985 war er noch tiefer unter Trend.'
         : 'An nur ' + round((1 - h) * 100) + ' % aller Tage seit 1985 war er noch weiter über Trend.'}` + lageSatz(e);
     },
   },
   {
     id: 'conc-heat', label: 'Konzentration · S&P 500 kapitalgewichtet ÷ gleichgewichtet (SPY/RSP)',
+    short: 'Abhängigkeit von Großkonzernen',
     sym: 'SPY/RSP', assetClass: 'equity', kind: 'heat', unit: '', dec: 3, hex: '#F2B33D',
     zones: kaufzone, hotAbove: 0.85,
     fetch: ratioFetch(['SPY', 'spy.us'], ['RSP', 'rsp.us']),
@@ -263,6 +266,7 @@ const equity: MetricDefinition[] = [
   },
   {
     id: 'credit-heat', label: 'Kredit-Risikoappetit · Hochzins- ÷ Qualitätsanleihen (HYG/LQD)',
+    short: 'Risikofreude am Anleihemarkt',
     sym: 'HYG/LQD', assetClass: 'credit', kind: 'heat', unit: '', dec: 3, hex: '#22C6B8',
     zones: kaufzone, hotAbove: 0.85,
     fetch: ratioFetch(['HYG', 'hyg.us'], ['LQD', 'lqd.us']),

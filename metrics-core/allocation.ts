@@ -3,7 +3,7 @@
  *  Erweiterbar an drei Stellen: ASSET_UNIVERSE (neue Assets), PROFILES (neue Profile),
  *  AllocationStrategy (neue Strategien). */
 import { einordnenAngezeigt, LAGE_WORT } from './lage';
-import { kindLabel } from './math';
+import { fmt, kindLabel } from './math';
 import { PALETTE } from './palette';
 import { Lage, MetricKind, MetricSnapshot } from './types';
 
@@ -152,7 +152,7 @@ export const signalTiltStrategy: AllocationStrategy = {
         // Startseite) und was das Regelwerk daraus macht. Die Neigung ist stufenlos, ein
         // Wert im Mittelfeld kann den Anteil also trotzdem spürbar verschieben — vorher
         // hieß das hier „historisch heiße Zone", während die Startseite „Mittelfeld" sagte.
-        const v = r.metricValue!.toFixed(2);
+        const v = fmt(r.metricValue!, 2);
         const name = kindLabel(r.metricKind ?? 'heat');
         const lage = r.lage!;
         const wo = (lage === 'kauf' || lage === 'warn' ? 'in der ' : '') + LAGE_WORT[lage];

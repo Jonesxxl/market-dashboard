@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { einordnenAngezeigt, lageWort } from '../../../metrics-core/lage';
+import { einordnenAngezeigt, klartext, lageWort } from '../../../metrics-core/lage';
 import { formatValue } from '../../../metrics-core/math';
 import { PALETTE } from '../../../metrics-core/palette';
 import { AssetClass, Lage } from '../../../metrics-core/types';
@@ -37,6 +37,16 @@ const BEREICHE: { route: string; titel: string; frage: string; klassen: AssetCla
 interface Zeile {
   id: string; klasse: AssetClass; name: string; wert: number; anzeige: string;
   lage: Lage; label: string; wertend: boolean; farbe: string; ton: string;
+  /** Die Zahl als Satz — „Noch weiter unter dem Trend: nur an 11 % aller Tage." */
+  klartext: string;
+}
+/** Eine Zeile im Lagebild: „Kaufzone: Gold und Silber". */
+interface Gruppe { titel: string; namen: string; farbe: string; }
+
+/** „Gold, Silber und Palladium" — ab fünf Namen „A, B, C und 2 weitere". */
+function aufzaehlung(namen: string[], max = 4): string {
+  const n = namen.length > max ? [...namen.slice(0, max - 1), `${namen.length - max + 1} weitere`] : namen;
+  return n.length > 1 ? `${n.slice(0, -1).join(', ')} und ${n[n.length - 1]}` : n[0];
 }
 interface Kachel {
   route: string; titel: string; frage: string;
@@ -53,6 +63,7 @@ function zeile(m: MetricSnapshot): Zeile {
     name: m.short ?? m.label.split(' · ')[0],
     anzeige: formatValue(m.kind, m.current.value),
     lage: e.lage, label: lageWort(e, m.sym), wertend: e.wertend, ...farben(e.lage, e.wertend),
+    klartext: klartext(m),
   };
 }
 
@@ -93,6 +104,8 @@ function zeile(m: MetricSnapshot): Zeile {
               <div class="skala-band" [class.skala-neutral]="!k.spitze.wertend"></div>
               <div class="skala-marke"></div>
             </div>
+            <!-- Die Zahl übersetzt: „0,11" sagt für sich nichts. -->
+            <p class="text-[12.5px] text-muted leading-snug mt-2">{{ k.spitze.klartext }}</p>
           </div>
 
           <!-- Fuß -->
@@ -118,7 +131,21 @@ function zeile(m: MetricSnapshot): Zeile {
           günstig, nahe 1 historisch teuer — <b class="text-fg">und die Mitte heißt: nichts Besonderes.</b>
           Jede Kachel oben zeigt den auffälligsten Wert ihres Bereichs.
         </p>
-        <p class="font-mono text-[13px] text-muted mt-5">{{ lagebild() }}</p>
+        <!-- Konkret statt „2 in der Kaufzone — die Kacheln oben zeigen, wo": Wer hier liest,
+             soll nicht zurückscrollen müssen, um zu erfahren, welche. -->
+        @if (lagebild(); as gruppen) {
+          @if (gruppen.length) {
+            <ul class="font-mono text-[13px] mt-5 space-y-1.5">
+              @for (g of gruppen; track g.titel) {
+                <li><span [style.color]="g.farbe">{{ g.titel }}:</span> <span class="text-fg">{{ g.namen }}</span></li>
+              }
+            </ul>
+          } @else {
+            <p class="font-mono text-[13px] text-muted mt-5">Keine Metrik in einer Kauf- oder Warnzone, alles im Mittelfeld. Ein ruhiger Tag.</p>
+          }
+        } @else {
+          <p class="font-mono text-[13px] text-muted mt-5">Daten werden geladen …</p>
+        }
       </div>
     </section>
 
@@ -183,19 +210,22 @@ export class LandingComponent {
     return g ? new Date(g).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '–';
   });
 
-  /** Ein ehrlicher Satz zur Gesamtlage — auch dann, wenn gerade nichts los ist. */
-  protected readonly lagebild = computed<string>(() => {
+  /** Die Gesamtlage beim Namen genannt, gruppiert wie die Kacheln einordnen. Währungen
+   *  stehen für sich: Bei ihnen heißt „tief" nicht günstig. `null` solange Daten fehlen,
+   *  eine leere Liste an einem ruhigen Tag. */
+  protected readonly lagebild = computed<Gruppe[] | null>(() => {
     const zeilen = this.alle();
-    if (!zeilen.length) return 'Daten werden geladen …';
-    const kauf = zeilen.filter(z => z.lage === 'kauf').length;
-    const warn = zeilen.filter(z => z.lage === 'warn').length;
-    const rand = zeilen.filter(z => z.lage !== 'neutral').length;
-    if (kauf || warn) {
-      return [kauf ? `${kauf} in der Kaufzone` : '', warn ? `${warn} in der Warnzone` : '']
-        .filter(Boolean).join(', ') + ' — die Kacheln oben zeigen, wo.';
-    }
-    return rand
-      ? `Keine Metrik in einer Kauf- oder Warnzone. ${rand} ${rand === 1 ? 'liegt' : 'liegen'} am Rand des gewohnten Bereichs.`
-      : 'Keine Metrik in einer Kauf- oder Warnzone, alles im Mittelfeld. Ein ruhiger Tag.';
+    if (!zeilen.length) return null;
+    const gruppe = (titel: string, farbe: string, f: (z: Zeile) => boolean): Gruppe | null => {
+      const namen = zeilen.filter(f).map(z => z.name);
+      return namen.length ? { titel, farbe, namen: aufzaehlung(namen) } : null;
+    };
+    return [
+      gruppe('Kaufzone', PALETTE.lo, z => z.lage === 'kauf'),
+      gruppe('Warnzone', PALETTE.hi, z => z.lage === 'warn'),
+      gruppe('Ungewöhnlich tief', PALETTE.lo, z => z.wertend && z.lage === 'tief'),
+      gruppe('Ungewöhnlich hoch', PALETTE.hi, z => z.wertend && z.lage === 'hoch'),
+      gruppe('Währungen weit vom Trend', PALETTE.fg, z => !z.wertend && z.lage !== 'neutral'),
+    ].filter((g): g is Gruppe => g !== null);
   });
 }

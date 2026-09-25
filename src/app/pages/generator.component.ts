@@ -99,10 +99,10 @@ type Mode = 'dca' | 'rebalance';
                 <span class="inline-block w-2 h-2 rounded-full mr-1.5" [style.background]="r.asset.hex"></span>
                 {{ r.asset.label }}</span>
               <span class="font-mono text-[12.5px]">
-                <span class="text-faint">Basis {{ (100 * r.baseWeight).toFixed(1) }} %</span>
-                <span class="text-fg font-semibold ml-2">→ {{ (100 * r.targetWeight).toFixed(1) }} %</span>
+                <span class="text-faint">Basis {{ fmt(100 * r.baseWeight, 1) }} %</span>
+                <span class="text-fg font-semibold ml-2">→ {{ fmt(100 * r.targetWeight, 1) }} %</span>
                 <span class="ml-2" [class.text-lo]="r.signal > 0.3" [class.text-hi]="r.signal < -0.3" [class.text-faint]="r.signal >= -0.3 && r.signal <= 0.3">
-                  Signal {{ r.signal > 0 ? '+' : '' }}{{ r.signal.toFixed(2) }}</span>
+                  Signal {{ r.signal > 0 ? '+' : '' }}{{ fmt(r.signal, 2) }}</span>
               </span>
             </div>
             <div class="h-[7px] bg-panel2 rounded mt-1.5 relative overflow-hidden">
@@ -125,7 +125,7 @@ type Mode = 'dca' | 'rebalance';
                   <td class="py-1.5 border-b border-panel2">
                     <span class="inline-block w-2 h-2 rounded-full mr-1.5" [style.background]="p.asset.hex"></span>{{ p.asset.label }}</td>
                   <td class="py-1.5 border-b border-panel2 text-right text-fg font-semibold">{{ fmt(p.amount) }} €</td>
-                  <td class="py-1.5 border-b border-panel2 text-right text-faint">{{ (100 * p.weight).toFixed(1) }} %</td>
+                  <td class="py-1.5 border-b border-panel2 text-right text-faint">{{ fmt(100 * p.weight, 1) }} %</td>
                 </tr>
               }
             </tbody>
@@ -153,7 +153,7 @@ type Mode = 'dca' | 'rebalance';
                     <td class="py-1.5 border-b border-panel2">
                       <span class="inline-block w-2 h-2 rounded-full mr-1.5" [style.background]="t.asset.hex"></span>{{ t.asset.label }}</td>
                     <td class="py-1.5 border-b border-panel2 text-right text-fg font-semibold">{{ fmt(t.amount) }} €</td>
-                    <td class="py-1.5 border-b border-panel2 text-right text-faint">{{ (100 * t.fromWeight).toFixed(1) }} % → {{ (100 * t.toWeight).toFixed(1) }} %</td>
+                    <td class="py-1.5 border-b border-panel2 text-right text-faint">{{ fmt(100 * t.fromWeight, 1) }} % → {{ fmt(100 * t.toWeight, 1) }} %</td>
                   </tr>
                 }
               </tbody>

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/c
 import { PALETTE } from '../../../metrics-core/palette';
 import { RailComponent } from '../shared/ui';
 import { MetricListComponent } from '../shared/metric-list.component';
-import { MarketDataService } from '../core/market-data.service';
+import { fmt, MarketDataService } from '../core/market-data.service';
 
 /** Einordnung des Blasen-Scores, von oben nach unten geprüft: die erste Stufe, deren
  *  Schwelle der Score überschreitet, gilt. */
@@ -26,12 +26,12 @@ const STUFEN: { ab: number; titel: string; text: string; farbe: string }[] = [
       <div class="card p-6 mb-4">
         <h2 class="card-title">KI-Blasen-Score</h2>
         <div class="flex items-center gap-6 flex-wrap">
-          <div class="font-mono text-[52px] font-semibold leading-none" [style.color]="sc.stufe.farbe">{{ sc.score.toFixed(2) }}</div>
+          <div class="font-mono text-[52px] font-semibold leading-none" [style.color]="sc.stufe.farbe">{{ fmt(sc.score, 2) }}</div>
           <div class="text-[13px] text-muted max-w-xl leading-relaxed">
             <b class="text-fg">{{ sc.stufe.titel }}</b> {{ sc.stufe.text }}<br><br>
             Der Score ist der Mittelwert aus {{ sc.comps.length }} Fragen, jede als historisches Perzentil von 0 bis 1:
             @for (c of sc.comps; track c[0]) {
-              <span>{{ c[2] }} <b class="text-fg">{{ c[1].toFixed(2) }}</b>{{ !$last ? ' · ' : '' }}</span>
+              <span>{{ c[2] }} <b class="text-fg">{{ fmt(c[1], 2) }}</b>{{ !$last ? ' · ' : '' }}</span>
             }
           </div>
         </div>
@@ -43,6 +43,7 @@ const STUFEN: { ab: number; titel: string; text: string; farbe: string }[] = [
 })
 export class AiComponent {
   private data = inject(MarketDataService);
+  protected readonly fmt = fmt;
 
   protected readonly aiMetrics = computed(() =>
     this.data.byIds(['ndx-heat', 'ai-basket-heat', 'conc-heat', 'credit-heat']));

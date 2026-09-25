@@ -25,10 +25,28 @@ export const RISK_CONSTANTS: Record<string, { lo: number; hi: number; genesis: s
 export const fmt = (n: number, d = 0): string =>
   n.toLocaleString('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d });
 
-/** Anzeige eines 0…1-Werts: Risk mit drei Nachkommastellen, Heat mit zwei. Karte, Startseite
- *  und statische Seiten nutzen dieselbe Regel — vorher stand sie dreimal im Code. */
+/** Nachkommastellen eines 0…1-Werts in der Anzeige: Risk drei, Heat zwei. */
+const valueDigits = (kind: MetricKind): number => (kind === 'risk' ? 3 : 2);
+
+/** Anzeige eines 0…1-Werts, deutsch mit Komma: „0,440" (Risk) bzw. „0,11" (Heat). Karte,
+ *  Startseite und statische Seiten nutzen dieselbe Regel. Vorher stand „0.440" mit Punkt
+ *  neben „84.447 $" und „−32,3 %" — wer den Punkt als Tausendertrenner liest, liest falsch. */
 export const formatValue = (kind: MetricKind, value: number): string =>
-  value.toFixed(kind === 'risk' ? 3 : 2);
+  fmt(value, valueDigits(kind));
+
+/** Derselbe Wert als Zahl, gerundet wie angezeigt. Zum Rechnen und Vergleichen — die
+ *  formatierte Zeichenkette lässt sich wegen des Kommas nicht mehr per `+` zurückwandeln. */
+export const roundValue = (kind: MetricKind, value: number): number =>
+  +value.toFixed(valueDigits(kind));
+
+/** ISO-Datum (2026-09-25) → deutsches Datum (25.09.2026). Reine Umstellung der Zeichen,
+ *  ohne Date-Objekt — sonst verschiebt die Zeitzone das Datum um einen Tag. */
+export const datum = (iso: string): string =>
+  `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
+
+const MONATE = ['Jan.', 'Feb.', 'März', 'Apr.', 'Mai', 'Juni', 'Juli', 'Aug.', 'Sept.', 'Okt.', 'Nov.', 'Dez.'];
+/** Monat (2024-05 oder 2024-05-01) → „Mai 2024". */
+export const monat = (iso: string): string => `${MONATE[+iso.slice(5, 7) - 1]} ${iso.slice(0, 4)}`;
 
 export const kindLabel = (kind: MetricKind): string => (kind === 'risk' ? 'Risk' : 'Heat');
 

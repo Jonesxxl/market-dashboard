@@ -4,8 +4,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  computeHeat, computeRisk, defaultSignal, equalWeightIndex, formatValue, kindLabel,
-  percentileRank, ratioSeries, staleDays,
+  computeHeat, computeRisk, datum, defaultSignal, equalWeightIndex, formatValue, kindLabel,
+  monat, percentileRank, ratioSeries, roundValue, staleDays,
 } from './math';
 import { Row } from './types';
 
@@ -70,9 +70,11 @@ test('defaultSignal: 0 → +1, 0,5 → 0, 1 → −1', () => {
   assert.equal(defaultSignal(1), -1);
 });
 
-test('formatValue und kindLabel: Risk drei Stellen, Heat zwei', () => {
-  assert.equal(formatValue('risk', 0.4), '0.400');
-  assert.equal(formatValue('heat', 0.4), '0.40');
+test('formatValue und kindLabel: deutsch mit Komma, Risk drei Stellen, Heat zwei', () => {
+  assert.equal(formatValue('risk', 0.4), '0,400');
+  assert.equal(formatValue('heat', 0.4), '0,40');
+  assert.equal(roundValue('heat', 0.149), 0.15);
+  assert.equal(roundValue('risk', 0.2996), 0.3);
   assert.equal(kindLabel('risk'), 'Risk');
   assert.equal(kindLabel('heat'), 'Heat');
 });
@@ -80,4 +82,11 @@ test('formatValue und kindLabel: Risk drei Stellen, Heat zwei', () => {
 test('ratioSeries: zu wenig Überlappung ist ein Fehler, kein kurzer Verlauf', () => {
   assert.throws(() => ratioSeries(reihe(100, welle), reihe(100, welle)), /zu wenig/);
   assert.equal(ratioSeries(reihe(400, welle), reihe(400, () => 2)).length, 400);
+});
+
+test('datum und monat: deutsche Schreibweise ohne Zeitzonen-Verschiebung', () => {
+  assert.equal(datum('2026-09-25'), '25.09.2026');
+  assert.equal(datum('2026-01-01'), '01.01.2026');
+  assert.equal(monat('2024-05'), 'Mai 2024');
+  assert.equal(monat('2021-12-01'), 'Dez. 2021');
 });

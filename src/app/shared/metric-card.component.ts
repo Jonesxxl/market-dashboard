@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
-import { formatValue, kindLabel } from '../../../metrics-core/math';
+import { datum, formatValue, kindLabel, roundValue } from '../../../metrics-core/math';
 import { ChartSvg, priceSparklineSvg, sparklineSvg } from '../core/charts';
 import { fmt, MarketDataService, MetricSnapshot } from '../core/market-data.service';
 import { ChartComponent, RailComponent } from './ui';
@@ -62,7 +62,7 @@ export class MetricCardComponent {
   protected readonly value = computed(() => formatValue(this.m().kind, this.m().current.value));
   /** Die Chips unter dem Farbband vergleichen mit der Zahl, die groß darüber steht — nicht
    *  mit dem ungerundeten Wert. Sonst leuchtet „Kaufzone < 0.15" bei angezeigten 0.15. */
-  protected readonly shownValue = computed(() => +this.value());
+  protected readonly shownValue = computed(() => roundValue(this.m().kind, this.m().current.value));
 
   protected readonly scaleLabel = computed(() => {
     const m = this.m();
@@ -79,11 +79,13 @@ export class MetricCardComponent {
     const unit = m.unit ? ' ' + m.unit : '';
     const out = [
       { label: m.extra?.priceLabel ?? 'Kurs', value: fmt(m.current.price, m.dec) + unit },
-      { label: `${m.extra?.smaDays ?? 200}-Tage-Schnitt`, value: fmt(m.current.sma, m.dec) },
+      // Krypto rechnet mit 340 bzw. 374 Tagen — für Laien ist „≈ 1 Jahr" die lesbare Angabe.
+      { label: (m.extra?.smaDays ?? 200) >= 300 ? 'Durchschnitt ≈ 1 Jahr' : `${m.extra?.smaDays ?? 200}-Tage-Durchschnitt`,
+        value: fmt(m.current.sma, m.dec) },
     ];
     if (m.assetClass !== 'fx' && !m.extra?.hideAth) out.push({ label: 'vom Höchststand', value: fmt(m.stats.vsAth, 1) + ' %' });
     out.push({ label: '52-Wochen-Spanne', value: fmt(m.stats.lo52, m.dec) + '–' + fmt(m.stats.hi52, m.dec) });
-    out.push({ label: 'Stand', value: m.current.date });
+    out.push({ label: 'Stand', value: datum(m.current.date) });
     return out;
   });
 
