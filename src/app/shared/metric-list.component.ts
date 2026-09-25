@@ -17,7 +17,7 @@ import { MetricSkeletonComponent } from './ui';
       @for (m of metrics(); track m.id) { <app-metric-card [m]="m"/> }
       @empty {
         <div class="card border-dashed p-6 mb-4 text-muted text-[13.5px]">
-          Für diesen Bereich liegen noch keine Daten im Snapshot — der tägliche Berechnungslauf
+          Für diesen Bereich liegen noch keine Daten im Snapshot — der automatische Berechnungslauf
           (GitHub Action) füllt ihn beim nächsten erfolgreichen Durchgang automatisch.
         </div>
       }

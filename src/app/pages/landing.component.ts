@@ -74,7 +74,7 @@ function zeile(m: MetricSnapshot): Zeile {
   template: `
     <!-- ============ Erster Viewport: nur die vier Kacheln ============ -->
     <p class="font-mono text-[11px] tracking-[2.5px] uppercase text-lo mb-4">
-      Stand {{ stand() }} · täglich neu berechnet
+      Stand {{ stand() }} · alle zwei Tage neu berechnet
     </p>
 
     <!-- reveal-pending und in-view stehen hier fest im Markup: Was im ersten Viewport

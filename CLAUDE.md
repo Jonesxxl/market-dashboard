@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Überblick
 
-Macro Risk Dashboard — bewertet Krypto, Edelmetalle, Nasdaq/KI und Währungen danach, wie günstig oder teuer sie **relativ zu ihrer eigenen Historie** stehen. Angular-22-SPA auf Netlify, gefüttert von einem täglichen GitHub-Actions-Lauf.
+Macro Risk Dashboard — bewertet Krypto, Edelmetalle, Nasdaq/KI und Währungen danach, wie günstig oder teuer sie **relativ zu ihrer eigenen Historie** stehen. Angular-22-SPA auf Netlify, gefüttert von einem GitHub-Actions-Lauf alle zwei Tage.
 
 **Projektsprache ist Deutsch.** UI-Texte, Code-Kommentare, Commit-Messages und vor allem die `interpret`-Strings der Metriken sind durchgehend deutsch und richten sich an Laien, nicht an Finanzprofis. Neue Texte in diesem Ton und dieser Sprache schreiben.
 
@@ -20,7 +20,7 @@ npm run typecheck          # Typen von scripts/ + metrics-core/ + tailwind.confi
 npm run test:core          # Tests des Rechenkerns (Node-Test-Runner, kein Netz, datumsunabhängig)
 npm run snapshot           # Snapshot lokal bauen — schreibt public/snapshot.json!
 netlify dev --dir dist/macro-ng/browser   # Gebautes Ergebnis mit netlify.toml-Headern servieren
-gh workflow run snapshot.yml --ref main   # Täglichen Lauf manuell auslösen
+gh workflow run snapshot.yml --ref main   # Snapshot-Lauf manuell auslösen
 ```
 
 **Tests:** `npm run test:core` prüft den Rechenkern (`metrics-core/*.test.ts`) mit dem in Node eingebauten Test-Runner über tsx — ohne zusätzliche Abhängigkeiten, ohne Netz (`fetch` wird in den Tests ersetzt) und ohne Abhängigkeit vom heutigen Datum. Neue Tests dort ablegen und genauso halten, sonst werden sie an manchen Tagen rot. `npm test` (Karma) ist **nicht lauffähig**: `angular.json` verlangt `zone.js` als Test-Polyfill, das Paket ist nicht installiert, und es existiert keine `.spec.ts`. Ein Linter ist nicht eingerichtet.
@@ -31,10 +31,10 @@ gh workflow run snapshot.yml --ref main   # Täglichen Lauf manuell auslösen
 
 ### Das Frontend rechnet nichts
 
-Zentrale Entscheidung: Sämtliche Metrik-Berechnung passiert im täglichen Node-Lauf. Das Frontend lädt ausschließlich `/snapshot.json` und rendert es. `MarketDataService` hat genau einen `resource()`-Loader und keinerlei Marktlogik.
+Zentrale Entscheidung: Sämtliche Metrik-Berechnung passiert im Node-Lauf, der alle zwei Tage startet. Das Frontend lädt ausschließlich `/snapshot.json` und rendert es. `MarketDataService` hat genau einen `resource()`-Loader und keinerlei Marktlogik.
 
 ```
-GitHub Action (cron 05:17 UTC + workflow_dispatch)
+GitHub Action (cron 05:17 UTC an ungeraden Tagen + workflow_dispatch)
   └─ scripts/build-snapshot.ts  →  buildSnapshot(NODE_CTX)
        └─ schreibt public/snapshot.json + data/archive/<datum>.json
             └─ Commit als snapshot-bot  →  Webhook  →  Netlify-Build
@@ -63,7 +63,7 @@ Läuft in Node **und** im Browser, deshalb keine Node-Imports darin. Faustregel:
 
 **Neue Metrik hinzufügen = ein Eintrag in `REGISTRY` in `metrics.ts`.** Snapshot-Builder, Frontend und Generator iterieren darüber und sehen sie automatisch. Eine `MetricDefinition` liefert `fetch`, `compute`, `interpret` und optional `extra` sowie `short` (Kurzname für Listen, nötig, wenn der Teil des Labels vor „ · " nicht eindeutig ist, wie beim MVRV-Z-Score).
 
-**Metriken umbenennen oder entfernen ist gefahrlos**, weil `build-snapshot.ts` nur noch Metriken aus dem Vortag übernimmt, deren ID weiterhin in `REGISTRY` steht. Ohne diesen Filter würde eine gelöschte Metrik über den Carry-over täglich neu eingesetzt und als immer älter werdende Karte weiterleben.
+**Metriken umbenennen oder entfernen ist gefahrlos**, weil `build-snapshot.ts` nur noch Metriken aus dem vorigen Lauf übernimmt, deren ID weiterhin in `REGISTRY` steht. Ohne diesen Filter würde eine gelöschte Metrik über den Carry-over täglich neu eingesetzt und als immer älter werdende Karte weiterleben.
 
 ### Zwei Konventionen, die man kennen muss
 
@@ -92,10 +92,10 @@ Beim Ändern von `sources.ts` oder `build-snapshot.ts` unbedingt erhalten:
 1. **Quellenebene:** Yahoo primär, Stooq als Fallback, beide mit Retry und wachsendem Backoff. Krypto führt drei Quellen zusammen (Coin Metrics für die tiefe Historie, Yahoo und CoinGecko für die jüngsten Tage).
 2. **Metrikebene:** `Promise.allSettled` — eine gescheiterte Metrik landet in `snapshot.failed[]` und bricht den Lauf nicht ab. Requests starten gestaffelt, um Rate-Limits zu schonen.
 3. **Qualitäts-Gate:** Unter `MIN_FRESH = 3` frischen Metriken beendet sich der Lauf mit Exit 1 und schreibt **nichts** — ein kaputter Lauf fasst den letzten guten Stand nicht an.
-4. **Carry-over:** Fehlende Metriken werden aus dem Vortagesstand übernommen, mit ehrlich wachsendem `staleDays`. Die Seite verliert nie Karten, sie altert sichtbar.
-5. **Archivrotation:** `data/archive/` behält 90 Tage.
+4. **Carry-over:** Fehlende Metriken werden aus dem vorigen Lauf übernommen, mit ehrlich wachsendem `staleDays`. Die Seite verliert nie Karten, sie altert sichtbar.
+5. **Archivrotation:** `data/archive/` behält die letzten 90 Läufe (`ARCHIVE_KEEP` zählt Läufe, nicht Tage) — im 2-Tage-Takt also rund 180 Tage.
 
-Das Frontend spiegelt das: `AppComponent` warnt bei `failed.length > 0`, bei `ageDays > 2` und bei `bootstrap === true` (Demo-JSON aus dem Build-Paket, echter Lauf lief noch nie).
+Das Frontend spiegelt das: `AppComponent` warnt bei `failed.length > 0`, bei `ageDays > 2 × SNAPSHOT_INTERVAL_DAYS` (ein einzelner ausgefallener Lauf bleibt also still) und bei `bootstrap === true` (Demo-JSON aus dem Build-Paket, echter Lauf lief noch nie).
 
 ## Angular-Konventionen
 
@@ -138,6 +138,8 @@ Immutable-Caching gilt nur für gehashte Artefakte (`/main-*.js`, `/chunk-*.js`,
 ### Snapshot-Workflow
 
 Braucht `permissions: contents: write` und pusht als `snapshot-bot` direkt auf `main`; jeder erfolgreiche Lauf löst einen Netlify-Build aus. Der Job installiert per `npm ci` (tsx kommt aus dem Lockfile, nicht per `npx -y`), prüft mit `npm run typecheck` die Typen, bevor er Daten anfasst, und rebased vor dem Push in drei Versuchen. `concurrency: snapshot` verhindert, dass zwei Läufe sich überholen.
+
+**Takt: alle zwei Tage** (`17 5 */2 * *`, also an jedem ungeraden Monatstag; nach einem 31. folgt direkt der 1.). Der Takt steht an drei Stellen, die zusammengehören: im cron, in `SNAPSHOT_INTERVAL_DAYS` (`metrics-core/site.ts`, daraus leitet die Seite ab, ab wann Daten als veraltet gelten) und ausgeschrieben als „alle zwei Tage" in den Texten — Kopf der Startseite, Footer, Datenschutzerklärung, `index.html` (Meta-Beschreibungen, JSON-LD, FAQ), `llms.txt`, `docs.html` und die statischen Seiten. Wer den Takt ändert, sucht nach „alle zwei Tage", sonst behauptet die Seite einen Rhythmus, den es nicht gibt.
 
 ### Statische Seiten je Route — wichtig
 

@@ -110,7 +110,7 @@ export interface BubbleSnapshot { score: number; comps: [string, number, string]
 
 export interface Snapshot {
   version: 1;
-  /** true = mitgeliefertes Demo-JSON aus dem Build-Paket, NICHT vom täglichen Lauf.
+  /** true = mitgeliefertes Demo-JSON aus dem Build-Paket, NICHT vom Snapshot-Lauf.
    *  Der erste erfolgreiche GitHub-Action-Lauf schreibt die Datei ohne dieses Flag. */
   bootstrap?: boolean;
   generatedAt: string;

@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { Route, Routes, RouterLink, RouterLinkActive, RouterOutlet, Router, NavigationEnd } from '@angular/router';
-import { PAGES, PagePath } from '../../metrics-core/site';
+import { PAGES, PagePath, SNAPSHOT_INTERVAL_DAYS } from '../../metrics-core/site';
 import { MarketDataService } from './core/market-data.service';
 
 declare global {
@@ -60,7 +60,7 @@ export const routes: Routes = [
       @if (data.isBootstrap()) {
         <div class="font-mono text-[13px] px-4 py-3.5 border border-dashed border-mid rounded-xl mb-5 text-mid"
              role="status">
-          <b>Beispieldaten aus dem Build-Paket</b> (Stand {{ bootstrapDate() }}) — der tägliche Berechnungslauf
+          <b>Beispieldaten aus dem Build-Paket</b> (Stand {{ bootstrapDate() }}) — der automatische Berechnungslauf
           hat bislang kein Ergebnis geschrieben. Die gezeigten Werte sind daher nicht aktuell und dienen nur der
           Darstellung. Mit dem ersten erfolgreichen Lauf werden sie durch echte Tageskurse ersetzt.
         </div>
@@ -108,7 +108,7 @@ export const routes: Routes = [
         Marktkonzentration (SPY/RSP) und den Kredit-Risikoappetit (HYG/LQD).</p>
 
         <p class="mt-3 max-w-4xl">Datenquellen: Coin Metrics und CoinGecko für Krypto, Yahoo Finance mit Stooq
-        als Ersatzquelle für Metalle, Aktien und Währungen. Die Werte werden einmal täglich vorberechnet und
+        als Ersatzquelle für Metalle, Aktien und Währungen. Die Werte werden alle zwei Tage vorberechnet und
         unverändert ausgeliefert. <b class="text-fg">Keine Anlageberatung</b> — statistische Modelle ohne
         Gewähr, jede Entscheidung liegt bei dir.</p>
 
@@ -141,15 +141,19 @@ export class AppComponent {
     return g ? new Date(g).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '–';
   });
   protected readonly isError = computed(() =>
-    this.data.error() !== null || this.data.failed().length > 0 || this.data.ageDays() > 2);
+    this.data.error() !== null || this.data.failed().length > 0 || this.veraltet());
+  /** Veraltet erst nach zwei Takten: Ein einzelner ausgefallener Lauf bleibt still, wie schon
+   *  beim früheren täglichen Takt (Schwelle 2 Tage). Hätte die feste 2 überlebt, löste im
+   *  2-Tage-Takt schon ein einziger ausgefallener Lauf die Warnung aus. */
+  private readonly veraltet = computed(() =>
+    !this.data.isBootstrap() && this.data.ageDays() > 2 * SNAPSHOT_INTERVAL_DAYS);
   protected readonly statusText = computed<string | null>(() => {
     if (this.data.loading()) return 'Daten werden geladen …';
     const err = this.data.error();
-    if (err) return err + ' Der tägliche Berechnungslauf legt die Daten unter /snapshot.json ab.';
+    if (err) return err + ' Der automatische Berechnungslauf legt die Daten unter /snapshot.json ab.';
     const parts: string[] = [];
-    const age = this.data.ageDays();
-    if (!this.data.isBootstrap() && age > 2) {
-      parts.push(`Der letzte vollständige Berechnungslauf liegt ${age} Tage zurück — die Werte sind entsprechend alt.`);
+    if (this.veraltet()) {
+      parts.push(`Der letzte vollständige Berechnungslauf liegt ${this.data.ageDays()} Tage zurück — die Werte sind entsprechend alt.`);
     }
     const f = this.data.failed();
     if (f.length) {

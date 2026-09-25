@@ -1,4 +1,4 @@
-/** metrics-core · Snapshot-Builder. Läuft im täglichen Cron; das Frontend konsumiert nur das JSON. */
+/** metrics-core · Snapshot-Builder. Läuft im Snapshot-Cron (alle zwei Tage); das Frontend konsumiert nur das JSON. */
 import { einordnenAngezeigt } from './lage';
 import { computeHeat, equalWeightIndex, fmt, monthly, percentileRank, stats } from './math';
 import { defaultSignal, REGISTRY } from './metrics';

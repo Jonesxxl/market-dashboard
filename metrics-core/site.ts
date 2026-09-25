@@ -6,12 +6,17 @@
  *  las für /krypto eine andere Beschreibung als der Browser nach dem Start. */
 
 export const ORIGIN = 'https://chipper-cucurucho-5d0a49.netlify.app';
+
+/** Takt des Snapshot-Laufs in Tagen — muss zum cron in .github/workflows/snapshot.yml passen.
+ *  Die Seite leitet daraus ab, ab wann ihre Daten als veraltet gelten. Texte sagen „alle zwei
+ *  Tage" ausgeschrieben; wer den Takt ändert, sucht danach (auch in public/ und index.html). */
+export const SNAPSHOT_INTERVAL_DAYS = 2;
 export const SITE_NAME = 'Macro Risk Dashboard';
 
 export const HOME = {
   title: `${SITE_NAME} · Krypto · Metalle · KI · Währungen`,
   description: 'Wie günstig oder teuer stehen Bitcoin, Gold, der Nasdaq und die großen Währungen — '
-    + 'gemessen an ihrer eigenen Geschichte? Täglich neu berechnete Perzentile statt Bauchgefühl.',
+    + 'gemessen an ihrer eigenen Geschichte? Alle zwei Tage neu berechnete Perzentile statt Bauchgefühl.',
 };
 
 export type PagePath =

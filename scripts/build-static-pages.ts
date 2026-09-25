@@ -66,7 +66,7 @@ const METHODIK = `<section>
   gleicht aus, dass die Ausschläge von Zyklus zu Zyklus kleiner werden. 0 entspricht dem Niveau
   historischer Zyklusböden, 1 dem Niveau historischer Zyklustops.</p>
   <p>Jedes Asset wird ausschließlich mit seiner eigenen Vergangenheit verglichen, nie mit einem
-  anderen. Alle Werte werden einmal täglich vorberechnet; die Rohdaten liegen als
+  anderen. Alle Werte werden alle zwei Tage vorberechnet; die Rohdaten liegen als
   <a href="/snapshot.json">snapshot.json</a> offen. Quellen: Coin Metrics und CoinGecko für
   Kryptowährungen, Yahoo Finance mit Stooq als Ersatzquelle für Edelmetalle, Aktien und Währungen.</p>
   <p><strong>Keine Anlageberatung.</strong> Die Kennzahlen sind statistische Auswertungen der
@@ -183,7 +183,7 @@ function inhalt(p: Page, snap: Snapshot): string {
   const teile = [
     `<h1>${esc(p.h1)}</h1>`,
     `<p>${esc(p.lead)}</p>`,
-    `<p>Stand der Daten: <time datetime="${snap.generatedAt}">${datum(snap.generatedAt)}</time>. Täglich neu berechnet.</p>`,
+    `<p>Stand der Daten: <time datetime="${snap.generatedAt}">${datum(snap.generatedAt)}</time>. Alle zwei Tage neu berechnet.</p>`,
   ];
   if (p.metrics?.length) { teile.push(tabelle(p.metrics)); teile.push(`<h2>Was die einzelnen Werte bedeuten</h2>`); teile.push(deutungen(p.metrics)); }
   if (p.extra) teile.push(p.extra);

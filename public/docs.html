@@ -147,10 +147,11 @@
 <section id="deploy">
   <div class="mod">MODUL 05 // BETRIEB</div>
   <h2>Deployment</h2>
-  <p class="lead">Das Frontend rechnet nichts. Ein GitHub-Actions-Cron berechnet einmal täglich alle Metriken
+  <p class="lead">Das Frontend rechnet nichts. Ein GitHub-Actions-Cron berechnet alle zwei Tage alle Metriken
   und committet das Ergebnis — die Seite lädt nur noch eine fertige JSON-Datei und rendert sie.</p>
-  <details open><summary><span class="stepnum">01</span> Der tägliche Lauf</summary><div class="body">
-    Ein Workflow startet um <b>05:17 UTC</b> (nach US-Handelsschluss, vor dem EU-Morgen) und ruft den
+  <details open><summary><span class="stepnum">01</span> Der Lauf alle zwei Tage</summary><div class="body">
+    Ein Workflow startet an jedem ungeraden Tag des Monats um <b>05:17 UTC</b> (nach US-Handelsschluss,
+    vor dem EU-Morgen) und ruft den
     Snapshot-Builder auf. Der holt alle Kurse, rechnet Risk- und Heat-Werte, schreibt
     <code>public/snapshot.json</code> plus einen datierten Archiveintrag und committet beides als
     <code>snapshot-bot</code> nach <code>main</code>. Manuell auslösen geht ebenfalls:
@@ -164,7 +165,7 @@
     Vier Schichten, damit ein kaputter Lauf nichts zerstört: Yahoo mit <b>Stooq als Fallback</b> und Retries;
     eine gescheiterte Metrik landet in <code>failed[]</code> statt den Lauf abzubrechen; unter drei frisch
     geladenen Metriken bricht der Lauf mit Exit 1 ab und schreibt <b>gar nichts</b>; fehlende Werte werden aus
-    dem Vortag übernommen und altern sichtbar über <code>staleDays</code>. Die Seite verliert nie Karten.</div></details>
+    dem vorigen Lauf übernommen und altern sichtbar über <code>staleDays</code>. Die Seite verliert nie Karten.</div></details>
   <details><summary><span class="stepnum">04</span> Ausliefern</summary><div class="body">
     Der Commit des Bots löst über den Netlify-Webhook einen Build aus (<code>npm ci &amp;&amp; npx ng build</code>,
     Publish-Verzeichnis <code>dist/macro-ng/browser</code>). Unabhängig davon lädt das Frontend den Snapshot

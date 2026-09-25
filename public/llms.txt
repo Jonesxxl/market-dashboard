@@ -1,6 +1,6 @@
 # Macro Risk Dashboard
 
-> Bewertet Kryptowährungen, Edelmetalle, den Nasdaq 100 und die großen Währungen danach, wie weit ihr aktueller Kurs von ihrem eigenen langfristigen Trend abweicht — und an wie vielen Handelstagen der Vergangenheit diese Abweichung größer war. Jedes Asset wird ausschließlich mit seiner eigenen Historie verglichen, nie mit einem anderen. Alle Werte werden einmal täglich vorberechnet und unverändert ausgeliefert. Sprache: Deutsch. Keine Anlageberatung.
+> Bewertet Kryptowährungen, Edelmetalle, den Nasdaq 100 und die großen Währungen danach, wie weit ihr aktueller Kurs von ihrem eigenen langfristigen Trend abweicht — und an wie vielen Handelstagen der Vergangenheit diese Abweichung größer war. Jedes Asset wird ausschließlich mit seiner eigenen Historie verglichen, nie mit einem anderen. Alle Werte werden alle zwei Tage vorberechnet und unverändert ausgeliefert. Sprache: Deutsch. Keine Anlageberatung.
 
 ## Die beiden Kennzahlen
 
@@ -31,7 +31,7 @@
 
 ## Daten
 
-- [snapshot.json](https://chipper-cucurucho-5d0a49.netlify.app/snapshot.json): sämtliche berechneten Werte als JSON, täglich neu. Enthält pro Metrik den aktuellen Wert, Kurs, gleitenden Durchschnitt, Monatsreihen für Chart und Kurs, 52-Wochen-Spanne und eine deutschsprachige Deutung. Das Feld `failed` listet Metriken, die im letzten Lauf nicht aktualisiert werden konnten; `staleDays` gibt je Metrik das Alter des Kurses in Tagen an.
+- [snapshot.json](https://chipper-cucurucho-5d0a49.netlify.app/snapshot.json): sämtliche berechneten Werte als JSON, alle zwei Tage neu. Enthält pro Metrik den aktuellen Wert, Kurs, gleitenden Durchschnitt, Monatsreihen für Chart und Kurs, 52-Wochen-Spanne und eine deutschsprachige Deutung. Das Feld `failed` listet Metriken, die im letzten Lauf nicht aktualisiert werden konnten; `staleDays` gibt je Metrik das Alter des Kurses in Tagen an.
 
 ## Quellen
 

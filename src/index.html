@@ -5,7 +5,7 @@
   <title>Macro Risk Dashboard · Krypto · Metalle · KI · Währungen</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Wie günstig oder teuer stehen Bitcoin, Gold, der Nasdaq und die großen Währungen — gemessen an ihrer eigenen Geschichte? Täglich neu berechnete Perzentile statt Bauchgefühl.">
+  <meta name="description" content="Wie günstig oder teuer stehen Bitcoin, Gold, der Nasdaq und die großen Währungen — gemessen an ihrer eigenen Geschichte? Alle zwei Tage neu berechnete Perzentile statt Bauchgefühl.">
   <link rel="canonical" href="https://chipper-cucurucho-5d0a49.netlify.app/">
   <meta name="theme-color" content="#0B1220">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
@@ -16,10 +16,10 @@
   <meta property="og:locale" content="de_DE">
   <meta property="og:url" content="https://chipper-cucurucho-5d0a49.netlify.app/">
   <meta property="og:title" content="Macro Risk Dashboard · Ein Maß für alle Märkte">
-  <meta property="og:description" content="Wie günstig oder teuer stehen Bitcoin, Gold, der Nasdaq und die großen Währungen — gemessen an ihrer eigenen Geschichte? Täglich neu berechnete Perzentile statt Bauchgefühl.">
+  <meta property="og:description" content="Wie günstig oder teuer stehen Bitcoin, Gold, der Nasdaq und die großen Währungen — gemessen an ihrer eigenen Geschichte? Alle zwei Tage neu berechnete Perzentile statt Bauchgefühl.">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Macro Risk Dashboard · Ein Maß für alle Märkte">
-  <meta name="twitter:description" content="Wie günstig oder teuer stehen Bitcoin, Gold, der Nasdaq und die großen Währungen — gemessen an ihrer eigenen Geschichte? Täglich neu berechnete Perzentile statt Bauchgefühl.">
+  <meta name="twitter:description" content="Wie günstig oder teuer stehen Bitcoin, Gold, der Nasdaq und die großen Währungen — gemessen an ihrer eigenen Geschichte? Alle zwei Tage neu berechnete Perzentile statt Bauchgefühl.">
 
   <!-- Zusammenfassung für Sprachmodelle: Methodik, Konventionen und Grenzen in Textform -->
   <link rel="alternate" type="text/plain" href="/llms.txt" title="Zusammenfassung für Sprachmodelle">
@@ -41,8 +41,8 @@
       {
         "@type": "Dataset",
         "@id": "https://chipper-cucurucho-5d0a49.netlify.app/#dataset",
-        "name": "Macro Risk Dashboard — tägliche Bewertungskennzahlen",
-        "description": "Täglich berechnete Kennzahlen für Kryptowährungen, Edelmetalle, den Nasdaq 100 und Währungen. Heat ist das historische Perzentil von ln(Kurs/SMA200); Risk ist min-max-normiertes ln(Kurs/gleitender Durchschnitt) mal Tagesindex hoch einem Exponenten, je Asset kalibriert (Bitcoin: 340 Tage, Exponent 0,2). Enthält je Metrik aktuellen Wert, Kurs, gleitenden Durchschnitt, Monatsreihen, 52-Wochen-Spanne und eine deutschsprachige Deutung.",
+        "name": "Macro Risk Dashboard — Bewertungskennzahlen, alle zwei Tage aktualisiert",
+        "description": "Alle zwei Tage berechnete Kennzahlen für Kryptowährungen, Edelmetalle, den Nasdaq 100 und Währungen. Heat ist das historische Perzentil von ln(Kurs/SMA200); Risk ist min-max-normiertes ln(Kurs/gleitender Durchschnitt) mal Tagesindex hoch einem Exponenten, je Asset kalibriert (Bitcoin: 340 Tage, Exponent 0,2). Enthält je Metrik aktuellen Wert, Kurs, gleitenden Durchschnitt, Monatsreihen, 52-Wochen-Spanne und eine deutschsprachige Deutung.",
         "inLanguage": "de-DE",
         "isAccessibleForFree": true,
         "license": "https://chipper-cucurucho-5d0a49.netlify.app/impressum",
@@ -96,7 +96,7 @@
             "name": "Wie aktuell sind die Daten?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Ein automatischer Lauf berechnet alle Kennzahlen einmal täglich um 05:17 UTC neu. Konnte eine Quelle nicht aktualisiert werden, wird der zuletzt bekannte Stand weitergeführt und das Alter je Metrik im Feld staleDays offen ausgewiesen."
+              "text": "Ein automatischer Lauf berechnet alle Kennzahlen alle zwei Tage um 05:17 UTC neu. Konnte eine Quelle nicht aktualisiert werden, wird der zuletzt bekannte Stand weitergeführt und das Alter je Metrik im Feld staleDays offen ausgewiesen."
             }
           },
           {
