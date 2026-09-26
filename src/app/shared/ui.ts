@@ -1,14 +1,16 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, Directive, ElementRef, HostListener, computed,
-  inject, input,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, Directive, ElementRef, computed, inject, input } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { PALETTE } from '../../../metrics-core/palette';
+import { Zone } from '../../../metrics-core/types';
 import { TipData } from '../core/charts';
 import { fmt } from '../core/market-data.service';
+import { RevealDirective } from './reveal.directive';
 
 /* ===== Tooltip: Wert am Mauszeiger (Fadenkreuz) ===== */
-const SPW = 460, SPL = 34, SPR = 14, SPT = 10, SPB = 20, SPH = 118;
 const NS = 'http://www.w3.org/2000/svg';
 
+/** Ein einziges Tooltip-Element für alle Charts, am Body verankert, damit es nie von einer
+ *  Karte abgeschnitten wird. */
 function tipEl(): HTMLElement {
   let el = document.getElementById('charttip');
   if (!el) { el = document.createElement('div'); el.id = 'charttip'; document.body.appendChild(el); }
@@ -16,44 +18,52 @@ function tipEl(): HTMLElement {
 }
 const fmtTip = (v: number): string => v >= 1000 ? fmt(v, 0) : v >= 100 ? fmt(v, 1) : fmt(v, 2);
 
-@Directive({ selector: '[appChartTip]', standalone: true })
+/** Fadenkreuz und Tooltip über einem SVG-Chart. Das SVG kommt als fertiger String
+ *  (`innerHTML`), deshalb werden Linie und Punkt hier direkt ins SVG gesetzt — Angular
+ *  kennt dessen Inhalt nicht. Die Umrechnung von Mausposition auf Datenpunkt nutzt den
+ *  Rahmen, mit dem der Chart gezeichnet wurde (`tip.frame`). */
+@Directive({
+  selector: '[appChartTip]',
+  host: { '(pointermove)': 'onMove($event)', '(pointerleave)': 'onLeave()' },
+})
 export class ChartTipDirective {
   private host = inject<ElementRef<HTMLElement>>(ElementRef);
   tipData = input.required<TipData>({ alias: 'appChartTip' });
 
-  @HostListener('pointermove', ['$event'])
   onMove(e: PointerEvent): void {
     const svg: SVGSVGElement | null = this.host.nativeElement.querySelector('svg');
     if (!svg) return;
     const d = this.tipData();
-    const rect = svg.getBoundingClientRect();
+    const f = d.frame;
     const n = d.v.length;
-    const span = d.s ?? 1;
-    const xv = (e.clientX - rect.left) / rect.width * SPW;
-    let i = Math.round((xv - SPL) / ((SPW - SPL - SPR) * span) * (n - 1));
-    i = Math.max(0, Math.min(n - 1, i));
-    const xi = SPL + (SPW - SPL - SPR) * span * i / (n - 1);
-    const HH = d.hh ?? SPH, HT = d.ht ?? SPT, HB = d.hb ?? SPB;
-    const yi = HT + (HH - HT - HB) * (1 - d.v[i]);
+    const rect = svg.getBoundingClientRect();
+    // Breite, die die Punkte belegen — beim Bärenmarkt-Chart endet der Verlauf vor dem Rand.
+    const plotW = (f.w - f.l - f.r) * (d.s ?? 1);
+    const xv = (e.clientX - rect.left) / rect.width * f.w;
+    const i = Math.max(0, Math.min(n - 1, Math.round((xv - f.l) / plotW * (n - 1))));
+    const xi = f.l + plotW * i / (n - 1);
+    const yi = f.t + (f.h - f.t - f.b) * (1 - d.v[i]);
+
     let cl: SVGLineElement | null = svg.querySelector('.cross');
     let dot: SVGCircleElement | null = svg.querySelector('.crossdot');
-    if (!cl) {
+    if (!cl || !dot) {
       cl = document.createElementNS(NS, 'line'); cl.setAttribute('class', 'cross');
-      cl.setAttribute('stroke', '#E8EEF7'); cl.setAttribute('stroke-width', '1');
+      cl.setAttribute('stroke', PALETTE.fg); cl.setAttribute('stroke-width', '1');
       cl.setAttribute('stroke-dasharray', '2 3'); svg.appendChild(cl);
       dot = document.createElementNS(NS, 'circle'); dot.setAttribute('class', 'crossdot');
-      dot.setAttribute('r', '3.5'); dot.setAttribute('fill', '#E8EEF7'); svg.appendChild(dot);
+      dot.setAttribute('r', '3.5'); dot.setAttribute('fill', PALETTE.fg); svg.appendChild(dot);
     }
-    cl.setAttribute('y1', String(HT)); cl.setAttribute('y2', String(HH - HB));
+    cl.setAttribute('y1', String(f.t)); cl.setAttribute('y2', String(f.h - f.b));
     cl.setAttribute('x1', String(xi)); cl.setAttribute('x2', String(xi)); cl.setAttribute('opacity', '.6');
-    dot!.setAttribute('cx', String(xi)); dot!.setAttribute('cy', String(yi)); dot!.setAttribute('opacity', '1');
+    dot.setAttribute('cx', String(xi)); dot.setAttribute('cy', String(yi)); dot.setAttribute('opacity', '1');
+
     const pTxt = d.p && d.p[i] != null ? `${fmtTip(d.p[i])}${d.u ? ' ' + d.u : ''}` : '';
     const tip = tipEl();
     if (d.f === 'none') {
       // Preis-Chart: v trägt nur die Position auf der eigenen Skala, angezeigt wird p.
       tip.textContent = `${d.m[i]} · ${d.l} ${pTxt}`;
     } else {
-      const vTxt = d.f === 'pct' ? Math.round(d.v[i] * 100) + ' %' : d.v[i].toFixed(2);
+      const vTxt = d.f === 'pct' ? Math.round(d.v[i] * 100) + ' %' : fmt(d.v[i], 2);
       tip.textContent = `${d.m[i]} · ${d.l} ${vTxt}${pTxt ? ' · ' + pTxt : ''}`;
     }
     tip.style.display = 'block';
@@ -61,47 +71,21 @@ export class ChartTipDirective {
     tip.style.top = Math.max(6, e.clientY - 36) + 'px';
   }
 
-  @HostListener('pointerleave')
   onLeave(): void {
     tipEl().style.display = 'none';
     this.host.nativeElement.querySelectorAll('.cross, .crossdot').forEach((el: Element) => el.setAttribute('opacity', '0'));
   }
 }
 
-/** Setzt `in-view`, sobald das Element zum ersten Mal in den Sichtbereich kommt, und
- *  hört danach auf zu beobachten. Die Einlauf-Animationen hängen daran: Ohne das laufen
- *  alle Karten gleichzeitig beim Laden ab, und wer nach unten scrollt, findet nur noch
- *  Endzustände vor.
- *
- *  Ohne die Klasse rendert alles im Endzustand — die Animationen dürfen nie darüber
- *  entscheiden, ob etwas überhaupt sichtbar ist. */
-function revealOnEnter(el: HTMLElement, destroyRef: DestroyRef): void {
-  // Ohne Beobachter wird nichts versteckt: Der Inhalt bleibt sichtbar, nur ohne Animation.
-  if (typeof IntersectionObserver !== 'function') return;
-
-  const io = new IntersectionObserver(entries => {
-    for (const e of entries) {
-      if (!e.isIntersecting) continue;
-      el.classList.add('in-view');   // pausierte Animation läuft an
-      io.disconnect();
-    }
-  }, { rootMargin: '0px 0px -60px 0px' });   // erst zünden, wenn ein Stück wirklich zu sehen ist
-
-  // Reihenfolge ist entscheidend: erst verstecken, wenn der Beobachter nachweislich steht.
-  // Andersherum bliebe der Inhalt unsichtbar, falls die Konstruktion oben fehlschlägt.
-  // Der Konstruktor läuft vor dem ersten Bildaufbau, der Startzustand gilt also sofort —
-  // hinge er an `in-view`, wäre die Linie einen Moment fertig zu sehen, würde verschwinden
-  // und erst dann gezeichnet.
-  el.classList.add('reveal-pending');
-  io.observe(el);
-  destroyRef.onDestroy(() => io.disconnect());
-}
-
-/* ===== SVG-Chart-Wrapper ===== */
+/* ===== SVG-Chart-Wrapper =====
+ * Die Einzeichnung startet, sobald der Chart in den Sichtbereich kommt — das übernimmt
+ * `RevealDirective` als Host-Direktive, dieselbe, die auf der Startseite als `appReveal`
+ * sitzt. Eine zweite, eigene Implementierung gibt es nicht mehr. */
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-chart',
   imports: [ChartTipDirective],
+  hostDirectives: [RevealDirective],
   template: `
     <div class="spark mt-2.5" [appChartTip]="tip()" [innerHTML]="safeSvg()"></div>
   `,
@@ -111,9 +95,8 @@ export class ChartComponent {
   svg = input.required<string>();
   tip = input.required<TipData>();
 
-  constructor() {
-    revealOnEnter(inject<ElementRef<HTMLElement>>(ElementRef).nativeElement, inject(DestroyRef));
-  }
+  /** Angulars Standard-Bereinigung entfernt SVG vollständig, deshalb der Bypass. Vertretbar,
+   *  weil der String ausschließlich in `core/charts.ts` aus Zahlen zusammengesetzt wird. */
   protected readonly safeSvg = computed<SafeHtml>(() => this.sanitizer.bypassSecurityTrustHtml(this.svg()));
 }
 
@@ -121,13 +104,14 @@ export class ChartComponent {
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-rail',
+  hostDirectives: [RevealDirective],
   template: `
     <div class="relative h-[58px] mx-0.5">
       <div class="absolute left-0 right-0 top-[20px] h-[11px] rounded-md"
-           style="background:linear-gradient(90deg,#22C6B8 0%,#22C6B8 15%,#F2B33D 50%,#F0533F 88%)"></div>
+           [class.bg-skala]="!neutral()" [class.bg-skala-neutral]="neutral()"></div>
       @for (t of ticks; track t) {
         <div class="absolute top-[36px] font-mono text-[10px] text-faint -translate-x-1/2"
-             [style.left.%]="t * 100">{{ t.toFixed(2) }}</div>
+             [style.left.%]="t * 100">{{ fmt(t, 2) }}</div>
       }
       @for (gh of ghosts(); track gh.t) {
         <div class="absolute top-[16px] w-0.5 h-[19px] bg-muted opacity-45" [style.left.%]="gh.r * 100">
@@ -136,22 +120,23 @@ export class ChartComponent {
       }
       <div class="rail-marker absolute top-[9px] w-[3px] h-[33px] bg-fg rounded-sm transition-[left] duration-700"
            style="box-shadow:0 0 10px rgba(255,255,255,.35)"
-           [style.left.%]="Math.min(99.7, value() * 100)"></div>
+           [style.left.%]="markerLeft()"></div>
     </div>
     @if (zones().length || hotAbove() !== null) {
       <div class="flex gap-2 flex-wrap mt-3 rail-chips">
-        @for (z of zones(); track z[0]) {
+        @for (z of zones(); track z.label) {
           <div class="font-mono text-[11px] px-2.5 py-1 rounded-lg border"
-               [class.border-lo]="value() < z[2]" [class.text-lo]="value() < z[2]"
-               [class.border-line]="value() >= z[2]" [class.text-muted]="value() >= z[2]">
-            {{ z[0] }} {{ z[1] }}
+               [class.border-lo]="value() < z.below" [class.text-lo]="value() < z.below"
+               [class.border-line]="value() >= z.below" [class.text-muted]="value() >= z.below">
+            {{ z.label }} &lt; {{ fmt(z.below, 2) }}
           </div>
         }
-        @if (hotAbove() !== null) {
+        @let hot = hotAbove();
+        @if (hot !== null) {
           <div class="font-mono text-[11px] px-2.5 py-1 rounded-lg border"
-               [class.border-hi]="value() > hotAbove()!" [class.text-hi]="value() > hotAbove()!"
-               [class.border-line]="value() <= hotAbove()!" [class.text-muted]="value() <= hotAbove()!">
-            Überhitzt &gt; {{ hotAbove()!.toFixed(2) }}
+               [class.border-hi]="value() > hot" [class.text-hi]="value() > hot"
+               [class.border-line]="value() <= hot" [class.text-muted]="value() <= hot">
+            Überhitzt &gt; {{ fmt(hot, 2) }}
           </div>
         }
       </div>
@@ -161,14 +146,15 @@ export class ChartComponent {
 export class RailComponent {
   value = input.required<number>();
   ghosts = input<{ r: number; t: string }[]>([]);
-  zones = input<[string, string, number][]>([]);
+  zones = input<Zone[]>([]);
   hotAbove = input<number | null>(null);
+  /** Band ohne Wertungsfarben — für Metriken ohne Zonen, bei denen es kein günstig oder
+   *  teuer gibt (Währungen). Ein türkis-rotes Band würde dort etwas behaupten. */
+  neutral = input(false);
   protected readonly ticks = [0, 0.25, 0.5, 0.75, 1];
-  protected readonly Math = Math;
-
-  constructor() {
-    revealOnEnter(inject<ElementRef<HTMLElement>>(ElementRef).nativeElement, inject(DestroyRef));
-  }
+  protected readonly fmt = fmt;
+  /** Knapp vor dem rechten Rand anhalten, damit der Marker bei 1,0 nicht übersteht. */
+  protected readonly markerLeft = computed(() => Math.min(99.7, this.value() * 100));
 }
 
 /* ===== Ladeplatzhalter =====
@@ -183,7 +169,7 @@ export class RailComponent {
   selector: 'app-metric-skeleton',
   template: `
     @for (i of rows(); track i) {
-      <div class="bg-panel border border-line rounded-2xl p-6 mb-4" aria-hidden="true">
+      <div class="card p-6 mb-4" aria-hidden="true">
         <!-- Kopfzeile: Titel links, Statistikzeile rechts -->
         <div class="flex justify-between items-baseline gap-2.5 mb-3">
           <div class="sk h-[15px] w-[170px]"></div>

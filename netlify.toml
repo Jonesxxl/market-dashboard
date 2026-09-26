@@ -34,8 +34,8 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
-# Die Daten selbst: kurz cachen, aber immer revalidieren. Der tägliche Lauf schreibt
-# einmal pro Tag — fünf Minuten Toleranz sparen Requests, ohne dass etwas veraltet wirkt.
+# Die Daten selbst: kurz cachen, aber immer revalidieren. Der Snapshot-Lauf schreibt
+# alle zwei Tage — fünf Minuten Toleranz sparen Requests, ohne dass etwas veraltet wirkt.
 [[headers]]
   for = "/snapshot.json"
   [headers.values]

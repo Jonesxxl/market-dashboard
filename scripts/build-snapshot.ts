@@ -1,13 +1,15 @@
-/** Täglicher Snapshot-Build (GitHub Actions).
+/** Snapshot-Build, alle zwei Tage per GitHub Actions.
  *  Robustheit: Ausgefallene Feeds übernehmen ihre letzten guten Werte aus dem vorigen Snapshot
  *  (mit ehrlich wachsendem staleDays) — die Seite verliert nie Karten, sondern altert sichtbar.
  *  Qualitäts-Gate VOR jedem Schreiben: ein kaputter Lauf fasst den letzten guten Stand nicht an. */
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { buildSnapshot } from '../metrics-core/snapshot';
+import { staleDays } from '../metrics-core/math';
 import { REGISTRY } from '../metrics-core/metrics';
 import { NODE_CTX } from '../metrics-core/sources';
 import { Snapshot } from '../metrics-core/types';
 
+/** Anzahl Läufe, nicht Tage: Bei einem Lauf alle zwei Tage reichen 90 Einträge ≈ 180 Tage zurück. */
 const ARCHIVE_KEEP = 90;
 const MIN_FRESH = 3; // unter 3 frisch geladenen Metriken gilt der Lauf als Totalausfall
 
@@ -31,12 +33,12 @@ async function main(): Promise<void> {
     const have = new Set(snap.metrics.map(m => m.id));
     // Nur noch registrierte Metriken dürfen übernommen werden. Sonst würde eine aus der
     // Registry entfernte oder umbenannte Metrik (z.B. eurusd → usdeur) für immer als
-    // stetig alternde Karte weiterleben, weil der Carry-over sie jeden Tag neu einsetzt.
+    // stetig alternde Karte weiterleben, weil der Carry-over sie bei jedem Lauf neu einsetzt.
     const known = new Set(REGISTRY.map(d => d.id));
     for (const old of prev.metrics) {
       if (have.has(old.id)) continue;
       if (!known.has(old.id)) { dropped++; continue; }
-      old.current.staleDays = Math.max(0, Math.round((Date.now() - new Date(old.current.date).getTime()) / 864e5));
+      old.current.staleDays = staleDays(old.current.date);
       snap.metrics.push(old);
       carried++;
     }
@@ -52,7 +54,7 @@ async function main(): Promise<void> {
   const files = readdirSync('data/archive').filter(f => f.endsWith('.json')).sort();
   for (const f of files.slice(0, Math.max(0, files.length - ARCHIVE_KEEP))) rmSync(`data/archive/${f}`);
 
-  console.log(`Snapshot: ${fresh} frisch, ${carried} aus Vortag übernommen, ${(json.length / 1024).toFixed(0)} KB` +
+  console.log(`Snapshot: ${fresh} frisch, ${carried} aus vorigem Lauf übernommen, ${(json.length / 1024).toFixed(0)} KB` +
     (dropped ? ` · ${dropped} nicht mehr registriert und verworfen` : '') +
     (snap.failed.length ? ` · ausgefallen: ${snap.failed.join(', ')}` : ''));
 

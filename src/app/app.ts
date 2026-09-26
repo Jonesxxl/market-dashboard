@@ -1,55 +1,29 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { Routes, RouterLink, RouterLinkActive, RouterOutlet, Router, NavigationEnd } from '@angular/router';
-import { MarketDataService, fmt } from './core/market-data.service';
+import { Route, Routes, RouterLink, RouterLinkActive, RouterOutlet, Router, NavigationEnd } from '@angular/router';
+import { PAGES, PagePath, SNAPSHOT_INTERVAL_DAYS } from '../../metrics-core/site';
+import { MarketDataService } from './core/market-data.service';
 
 declare global {
   interface Window { goatcounter?: { count: (opts: { path: string }) => void }; }
 }
 
 /* ===== Routen ===== */
-/* `title` und `data.description` werden von der AppTitleStrategy (src/app/core/title-strategy.ts)
-   zu Titel, Meta-Beschreibung, OG-Tags und Canonical verarbeitet — ohne das teilen sich alle
-   Routen denselben Eintrag in Tab, Suchergebnis und Link-Vorschau. */
+/* Titel und Beschreibung stehen in metrics-core/site.ts, weil der Generator der statischen
+   Seiten dieselben Texte braucht. Die AppTitleStrategy (src/app/core/title-strategy.ts)
+   macht daraus Titel, Meta-Beschreibung, OG-Tags und Canonical. */
+const page = (path: PagePath, loadComponent: Route['loadComponent']): Route => ({
+  path, title: PAGES[path].title, data: { description: PAGES[path].description }, loadComponent,
+});
+
 export const routes: Routes = [
-  {
-    path: '', title: '',
-    loadComponent: () => import('./pages/landing.component').then(m => m.LandingComponent),
-  },
-  {
-    path: 'krypto', title: 'Krypto — Risk-Metrik für Bitcoin und Ethereum',
-    data: { description: 'Zyklus-Risk für Bitcoin und Ethereum: 0 entspricht dem Niveau historischer Böden, 1 dem historischer Tops. Dazu Kursniveaus je Risk-Zone, der Digital-Asset-Basket und der Vergleich der Bärenmärkte 2017/18 und 2025/26.' },
-    loadComponent: () => import('./pages/crypto.component').then(m => m.CryptoComponent),
-  },
-  {
-    path: 'metalle', title: 'Edelmetalle — Gold, Silber und Palladium',
-    data: { description: 'Heat-Perzentile für Gold, Silber und Palladium: wie weit der Kurs von seinem 200-Tage-Durchschnitt abweicht und wie selten das historisch war. Dazu Gold/Silber- und Palladium/Gold-Verhältnis.' },
-    loadComponent: () => import('./pages/metals.component').then(m => m.MetalsComponent),
-  },
-  {
-    path: 'nasdaq-ki', title: 'Nasdaq und KI — Blasen-Score',
-    data: { description: 'Der KI-Blasen-Score bündelt fünf Messgrößen: Nasdaq-Trend, Trend des KI-Baskets, dessen Vorsprung vor dem S&P 500, die Marktkonzentration (SPY/RSP) und den Kredit-Risikoappetit (HYG/LQD).' },
-    loadComponent: () => import('./pages/ai.component').then(m => m.AiComponent),
-  },
-  {
-    path: 'waehrungen', title: 'Währungen — Dollar-Index und Paare',
-    data: { description: 'Dollar-Index, USD/EUR, USD/CHF, USD/CNY, USD/GHS und das Kreuzpaar CHF/EUR — je Karte der Heat-Wert und der tatsächliche Kursverlauf. Bei den Dollar-Paaren bedeutet eine steigende Kurve immer einen stärkeren Dollar.' },
-    loadComponent: () => import('./pages/fx.component').then(m => m.FxComponent),
-  },
-  {
-    path: 'generator', title: 'Sparplan- und Rebalancing-Generator',
-    data: { description: 'Leitet aus den aktuellen Signalen eine Gewichtung für Sparrate oder Depot ab. Die Berechnung läuft vollständig im Browser — eingegebene Beträge werden nicht übertragen und nicht gespeichert.' },
-    loadComponent: () => import('./pages/generator.component').then(m => m.GeneratorComponent),
-  },
-  {
-    path: 'impressum', title: 'Impressum',
-    data: { description: 'Anbieterkennzeichnung nach § 5 DDG sowie Hinweise zu Haftung und Inhalt des Macro Risk Dashboards.' },
-    loadComponent: () => import('./pages/impressum.component').then(m => m.ImpressumComponent),
-  },
-  {
-    path: 'datenschutz', title: 'Datenschutz',
-    data: { description: 'Diese Seite setzt keine Cookies, nutzt keinen LocalStorage und enthält keine Formulare. Welche Daten beim Aufruf trotzdem verarbeitet werden, steht hier.' },
-    loadComponent: () => import('./pages/datenschutz.component').then(m => m.DatenschutzComponent),
-  },
+  { path: '', title: '', loadComponent: () => import('./pages/landing.component').then(m => m.LandingComponent) },
+  page('krypto', () => import('./pages/crypto.component').then(m => m.CryptoComponent)),
+  page('metalle', () => import('./pages/metals.component').then(m => m.MetalsComponent)),
+  page('nasdaq-ki', () => import('./pages/ai.component').then(m => m.AiComponent)),
+  page('waehrungen', () => import('./pages/fx.component').then(m => m.FxComponent)),
+  page('generator', () => import('./pages/generator.component').then(m => m.GeneratorComponent)),
+  page('impressum', () => import('./pages/impressum.component').then(m => m.ImpressumComponent)),
+  page('datenschutz', () => import('./pages/datenschutz.component').then(m => m.DatenschutzComponent)),
   { path: '**', redirectTo: '' },
 ];
 
@@ -86,7 +60,7 @@ export const routes: Routes = [
       @if (data.isBootstrap()) {
         <div class="font-mono text-[13px] px-4 py-3.5 border border-dashed border-mid rounded-xl mb-5 text-mid"
              role="status">
-          <b>Beispieldaten aus dem Build-Paket</b> (Stand {{ bootstrapDate() }}) — der tägliche Berechnungslauf
+          <b>Beispieldaten aus dem Build-Paket</b> (Stand {{ bootstrapDate() }}) — der automatische Berechnungslauf
           hat bislang kein Ergebnis geschrieben. Die gezeigten Werte sind daher nicht aktuell und dienen nur der
           Darstellung. Mit dem ersten erfolgreichen Lauf werden sie durch echte Tageskurse ersetzt.
         </div>
@@ -134,7 +108,7 @@ export const routes: Routes = [
         Marktkonzentration (SPY/RSP) und den Kredit-Risikoappetit (HYG/LQD).</p>
 
         <p class="mt-3 max-w-4xl">Datenquellen: Coin Metrics und CoinGecko für Krypto, Yahoo Finance mit Stooq
-        als Ersatzquelle für Metalle, Aktien und Währungen. Die Werte werden einmal täglich vorberechnet und
+        als Ersatzquelle für Metalle, Aktien und Währungen. Die Werte werden alle zwei Tage vorberechnet und
         unverändert ausgeliefert. <b class="text-fg">Keine Anlageberatung</b> — statistische Modelle ohne
         Gewähr, jede Entscheidung liegt bei dir.</p>
 
@@ -157,22 +131,29 @@ export class AppComponent {
 
   protected readonly stamp = computed(() => {
     const g = this.data.generatedAt();
-    return g ? 'Snapshot vom ' + new Date(g).toLocaleString('de-DE') : '–';
+    if (!g) return '–';
+    const d = new Date(g);
+    return `Daten vom ${d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}, `
+      + `${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr`;
   });
   protected readonly bootstrapDate = computed(() => {
     const g = this.data.generatedAt();
-    return g ? new Date(g).toLocaleDateString('de-DE') : '–';
+    return g ? new Date(g).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '–';
   });
   protected readonly isError = computed(() =>
-    this.data.error() !== null || this.data.failed().length > 0 || this.data.ageDays() > 2);
+    this.data.error() !== null || this.data.failed().length > 0 || this.veraltet());
+  /** Veraltet erst nach zwei Takten: Ein einzelner ausgefallener Lauf bleibt still, wie schon
+   *  beim früheren täglichen Takt (Schwelle 2 Tage). Hätte die feste 2 überlebt, löste im
+   *  2-Tage-Takt schon ein einziger ausgefallener Lauf die Warnung aus. */
+  private readonly veraltet = computed(() =>
+    !this.data.isBootstrap() && this.data.ageDays() > 2 * SNAPSHOT_INTERVAL_DAYS);
   protected readonly statusText = computed<string | null>(() => {
     if (this.data.loading()) return 'Daten werden geladen …';
     const err = this.data.error();
-    if (err) return err + ' Der tägliche Berechnungslauf legt die Daten unter /snapshot.json ab.';
+    if (err) return err + ' Der automatische Berechnungslauf legt die Daten unter /snapshot.json ab.';
     const parts: string[] = [];
-    const age = this.data.ageDays();
-    if (!this.data.isBootstrap() && age > 2) {
-      parts.push(`Der letzte vollständige Berechnungslauf liegt ${age} Tage zurück — die Werte sind entsprechend alt.`);
+    if (this.veraltet()) {
+      parts.push(`Der letzte vollständige Berechnungslauf liegt ${this.data.ageDays()} Tage zurück — die Werte sind entsprechend alt.`);
     }
     const f = this.data.failed();
     if (f.length) {
@@ -190,5 +171,4 @@ export class AppComponent {
   }
 
   protected reload(): void { this.data.reload(); }
-  protected readonly fmt = fmt;
 }
