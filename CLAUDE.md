@@ -16,13 +16,14 @@ Macro Risk Dashboard — bewertet Krypto, Edelmetalle, Nasdaq/KI und Währungen 
 npm ci                     # Abhängigkeiten (node_modules ist nicht eingecheckt)
 npm start                  # Dev-Server auf http://localhost:4200
 npm run build              # Produktionsbuild nach dist/macro-ng/browser
-npm run typecheck          # Typen von scripts/ + metrics-core/ (läuft auch im Cron)
+npm run typecheck          # Typen von scripts/ + metrics-core/ + tailwind.config.ts (läuft auch im Cron)
+npm run test:core          # Tests des Rechenkerns (Node-Test-Runner, kein Netz, datumsunabhängig)
 npm run snapshot           # Snapshot lokal bauen — schreibt public/snapshot.json!
 netlify dev --dir dist/macro-ng/browser   # Gebautes Ergebnis mit netlify.toml-Headern servieren
 gh workflow run snapshot.yml --ref main   # Täglichen Lauf manuell auslösen
 ```
 
-**Tests:** `npm test` startet Karma, aber es existiert **keine einzige `.spec.ts`** — alle Schematics in `angular.json` haben `skipTests: true`. Einzelne Datei nach dem Anlegen: `ng test --include='**/name.spec.ts'`. Ein Linter ist nicht eingerichtet. Die einzige automatische Prüfung ist `npm run typecheck`.
+**Tests:** `npm run test:core` prüft den Rechenkern (`metrics-core/*.test.ts`) mit dem in Node eingebauten Test-Runner über tsx — ohne zusätzliche Abhängigkeiten, ohne Netz (`fetch` wird in den Tests ersetzt) und ohne Abhängigkeit vom heutigen Datum. Neue Tests dort ablegen und genauso halten, sonst werden sie an manchen Tagen rot. `npm test` (Karma) ist **nicht lauffähig**: `angular.json` verlangt `zone.js` als Test-Polyfill, das Paket ist nicht installiert, und es existiert keine `.spec.ts`. Ein Linter ist nicht eingerichtet.
 
 `npm run snapshot` überschreibt `public/snapshot.json` und legt einen Archiveintrag an. Vor dem Ausführen bedenken, dass das ein Commit-relevanter Nebeneffekt ist. Zum gefahrlosen Testen den Builder in einem leeren Verzeichnis mit `public/` und `data/archive/` laufen lassen.
 
@@ -46,12 +47,14 @@ GitHub Action (cron 05:17 UTC + workflow_dispatch)
 
 ### metrics-core/ — geteilter, plattformneutraler Kern
 
-Läuft in Node **und** im Browser, deshalb keine Node-Imports darin. `FetchContext` abstrahiert nur die Basis-URLs (Node: direkte URLs; Browser wäre über Proxy-Pfade gedacht, ist aktuell aber nicht verdrahtet — es gibt keine Proxy-Config in `angular.json`).
+Läuft in Node **und** im Browser, deshalb keine Node-Imports darin. Faustregel: Alles, was Cron, Build-Skripte und Frontend gemeinsam brauchen, gehört hierher — auch wenn es keine Metrik ist (Farben, Seiten-Metadaten). `FetchContext` abstrahiert nur die Basis-URLs (Node: direkte URLs; Browser wäre über Proxy-Pfade gedacht, ist aktuell aber nicht verdrahtet — es gibt keine Proxy-Config in `angular.json`).
 
 | Datei | Rolle |
 |---|---|
 | `types.ts` | Alle geteilten Typen. `Snapshot` ist der Vertrag zwischen Cron und Frontend. |
-| `math.ts` | Reine Funktionen, keine Abhängigkeiten. `computeHeat`, `computeRisk`, `percentileRank`. |
+| `math.ts` | Reine Funktionen, keine Abhängigkeiten. `computeHeat`, `computeRisk`, `percentileRank`, `equalWeightIndex` (beide Körbe), `formatValue` (Anzeige-Nachkommastellen). |
+| `palette.ts` | **Einzige Quelle aller Farbwerte.** Gelesen von `tailwind.config.ts`, den Charts, den Komponenten und der Registry. |
+| `site.ts` | Domain, Seitentitel und Beschreibungen — gelesen von den Routen, der TitleStrategy und dem Generator der statischen Seiten. |
 | `sources.ts` | Datenbeschaffung inkl. Fallbacks und Retries. |
 | `metrics.ts` | **Die Registry.** Eine Metrik = ein Eintrag. |
 | `snapshot.ts` | Baut den Snapshot, inkl. abgeleiteter Blöcke (Ratios, Bärenmarkt, KI-Blase). |
@@ -100,7 +103,12 @@ Angular 22 in moderner Form — beim Erweitern denselben Stil halten:
 - Signals (`signal`, `computed`, `resource()`) statt RxJS-Subscriptions für Daten. `MarketDataService` nutzt den `@Service()`-Decorator.
 - Signal Forms (`@angular/forms/signals`, `FormField`) — siehe `generator.component.ts`. Kein `ReactiveFormsModule`.
 - Built-in Control Flow `@if` / `@for`, keine `*ngIf` / `*ngFor`.
-- Inline-Templates mit Tailwind-Klassen; Farben und Abstände aus `tailwind.config.js`.
+- Inline-Templates mit Tailwind-Klassen; Farben aus `metrics-core/palette.ts` (über `tailwind.config.ts` auch als Klassen wie `text-lo`, `bg-panel`, `bg-skala`). **Keine Hex-Literale in Komponenten oder Charts** — wo keine Klasse geht (`[style.color]`, SVG-Strings), `PALETTE.x` importieren.
+- Karten nutzen `.card` (Fläche, Kante, Radius) und `.card-title` (kleine Versal-Überschrift) aus `src/styles.css`; Innen- und Außenabstand setzt die Aufrufstelle. Abweichungen per Utility (`card border-dashed`), die liegen in der späteren Schicht und gewinnen.
+- Metrik-Karten eines Bereichs über `<app-metric-list [metrics]="…" [skeletonCount]="n"/>` — sie bringt Ladeplatzhalter und Leerzustand mit. Nicht wieder pro Seite nachbauen.
+- Einblend-Animationen hängen an `RevealDirective`: als `appReveal`-Attribut im Template oder als `hostDirectives: [RevealDirective]` in einer Komponente (so bei `app-chart` und `app-rail`). Kein `classList` von Hand.
+- Texte aus dem Snapshot mit `<b>`-Auszeichnung (`interpret`, `note`) per `[innerHTML]` **ohne** `bypassSecurityTrustHtml` einbinden und am Container `[&_b]:text-fg` setzen. Die Daten kommen von einer externen URL; Angulars Standard-Bereinigung lässt `<b>` stehen. Der einzige legitime Bypass ist `ChartComponent`, weil die Bereinigung SVG komplett entfernen würde und die Strings nur aus Zahlen in `core/charts.ts` entstehen.
+- Chart-Funktionen in `core/charts.ts` nehmen ein Options-Objekt und liefern `ChartSvg` (`{ svg, tip }`). `tip.frame` ist der Zeichenrahmen, mit dem der Tooltip die Mausposition umrechnet — wer einen Chart mit anderen Rändern baut, gibt seinen `Frame` mit, statt im Tooltip Konstanten zu ändern.
 - **Bedienelemente nutzen die `.btn`-Klassen aus `src/styles.css`** (`@layer components`), nicht handgeschriebene Utility-Ketten: `.btn` plus `.btn-ghost` (Standard), `.btn-primary` (getroffene Wahl), `.btn-sel` (nachrangig ausgewählt), `.btn-sm` (dichte Gruppen), `.btn-on` (aktive Route via `routerLinkActive`). `.btn-on` und `.btn-sel` müssen in der Datei **nach** `.btn-ghost` stehen, sonst gewinnt dessen `:hover`-Regel bei gleicher Spezifität. Der `focus-visible`-Ring hängt an `.btn` — auf dunklem Grund wäre Tastaturnavigation sonst unsichtbar.
 - Alle Seiten sind `loadComponent`-lazy; Routen stehen in `src/app/app.ts`, nicht in einer eigenen Routes-Datei. Jede Route trägt ein `title`; `AppTitleStrategy` (`src/app/core/title-strategy.ts`) hängt den Seitennamen an.
 - **Keine exportierten Klassen in `src/main.ts`.** Eine dort exportierte `@Injectable`-Klasse zwingt den Builder, das Hauptbundle in einen 55-Byte-Stub plus Lazy-Chunk zu zerlegen — ein zusätzlicher Roundtrip vor dem ersten Rendern. Deshalb liegt die TitleStrategy in einer eigenen Datei.
@@ -109,7 +117,7 @@ Angular 22 in moderner Form — beim Erweitern denselben Stil halten:
 
 ## Deployment
 
-`netlify.toml` ist maßgeblich und überschreibt die UI-Einstellungen: Build `npm ci && npx ng build`, Publish `dist/macro-ng/browser` (der Application-Builder legt unter `outputPath` einen `browser/`-Unterordner an), SPA-Fallback auf `index.html`, dazu `NODE_VERSION`, Cache- und Security-Header.
+`netlify.toml` ist maßgeblich und überschreibt die UI-Einstellungen: Build `npm ci && npm run build`, Publish `dist/macro-ng/browser` (der Application-Builder legt unter `outputPath` einen `browser/`-Unterordner an), SPA-Fallback auf `index.html`, dazu `NODE_VERSION`, Cache- und Security-Header.
 
 ### Die CSP ist strikt — und das hat zwei harte Konsequenzen
 
@@ -140,7 +148,7 @@ Der Generator schreibt den Inhalt direkt in `<app-root>`. Angular leert das Host
 
 `public/llms.txt` fasst Methodik, Konventionen, Datenquellen und Grenzen in Textform zusammen (Format nach llmstxt.org), `public/robots.txt` gibt die gängigen KI-Crawler ausdrücklich frei. In `src/index.html` steht ein JSON-LD-Block mit `WebSite`, `Dataset` (zeigt auf `snapshot.json`) und `FAQPage`. **Der ld+json-Block ist ein Datenblock, kein ausführbares Skript — die strikte `script-src`-Direktive greift dort nicht.**
 
-Titel, Meta-Beschreibung, OG-Tags und Canonical setzt `AppTitleStrategy` pro Route aus `title` und `data.description` in `src/app/app.ts`. Inhaltliche Änderungen an einer Metrik-Konvention gehören an vier Stellen nachgezogen: Registry, Seitentext, `llms.txt` und der FAQ-Block in `index.html`.
+Titel, Meta-Beschreibung, OG-Tags und Canonical setzt `AppTitleStrategy` pro Route aus `title` und `data.description`. Die Texte selbst stehen in `metrics-core/site.ts`, damit Browser und statische Seiten dieselbe Beschreibung zeigen; der Generator hängt bei den Datenseiten nur den aktuellen Wert an. Inhaltliche Änderungen an einer Metrik-Konvention gehören an vier Stellen nachgezogen: Registry, Seitentext, `llms.txt` und der FAQ-Block in `index.html`.
 
 ### Sonstiges
 

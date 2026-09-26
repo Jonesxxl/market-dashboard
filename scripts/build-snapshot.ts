@@ -4,6 +4,7 @@
  *  Qualitäts-Gate VOR jedem Schreiben: ein kaputter Lauf fasst den letzten guten Stand nicht an. */
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { buildSnapshot } from '../metrics-core/snapshot';
+import { staleDays } from '../metrics-core/math';
 import { REGISTRY } from '../metrics-core/metrics';
 import { NODE_CTX } from '../metrics-core/sources';
 import { Snapshot } from '../metrics-core/types';
@@ -36,7 +37,7 @@ async function main(): Promise<void> {
     for (const old of prev.metrics) {
       if (have.has(old.id)) continue;
       if (!known.has(old.id)) { dropped++; continue; }
-      old.current.staleDays = Math.max(0, Math.round((Date.now() - new Date(old.current.date).getTime()) / 864e5));
+      old.current.staleDays = staleDays(old.current.date);
       snap.metrics.push(old);
       carried++;
     }
