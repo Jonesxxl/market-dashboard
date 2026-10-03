@@ -1,4 +1,5 @@
 /** metrics-core · Datenquellen. Läuft in Node (Cron, direkte URLs) und im Browser (Proxy-Pfade). */
+import { equalWeightIndex, staleDays } from './math';
 import { FetchContext, Row } from './types';
 
 const delay = (ms: number) => new Promise<void>(res => setTimeout(res, ms));
@@ -19,10 +20,27 @@ export const NODE_CTX: FetchContext = {
   stooqBase: 'https://stooq.com',
 };
 
+/** Die Coin-Metrics-CSV eines Assets wird pro Lauf nur einmal geladen: btc.csv brauchen
+ *  Risk und MVRV-Z-Score, eth.csv Risk und der Digital-Asset-Basket — vorher lud jeder Lauf
+ *  beide Dateien doppelt. Gleichzeitige Aufrufer teilen sich den Download; ein Fehlschlag
+ *  wird wieder vergessen, ein späterer Aufrufer versucht es also neu. */
+const csvCache = new Map<string, Promise<string>>();
+function coinMetricsCsv(asset: string): Promise<string> {
+  let csv = csvCache.get(asset);
+  if (!csv) {
+    csv = fetch(`https://raw.githubusercontent.com/coinmetrics/data/master/csv/${asset}.csv`)
+      .then(res => {
+        if (!res.ok) throw new Error('Coin Metrics HTTP ' + res.status);
+        return res.text();
+      });
+    csv.catch(() => csvCache.delete(asset));
+    csvCache.set(asset, csv);
+  }
+  return csv;
+}
+
 export async function fetchCoinMetrics(asset: string): Promise<Row[]> {
-  const res = await fetch(`https://raw.githubusercontent.com/coinmetrics/data/master/csv/${asset}.csv`);
-  if (!res.ok) throw new Error('Coin Metrics HTTP ' + res.status);
-  const lines = (await res.text()).split('\n');
+  const lines = (await coinMetricsCsv(asset)).split('\n');
   const head = lines[0].split(',');
   const iT = head.indexOf('time'), iP = head.indexOf('PriceUSD'), iR = head.indexOf('ReferenceRateUSD');
   const out: Row[] = [];
@@ -52,9 +70,7 @@ export async function fetchCoinMetrics(asset: string): Promise<Row[]> {
 const MVRV_WARMUP = 365;
 
 async function fetchMvrvFromCoinMetrics(): Promise<Row[]> {
-  const res = await fetch('https://raw.githubusercontent.com/coinmetrics/data/master/csv/btc.csv');
-  if (!res.ok) throw new Error('Coin Metrics HTTP ' + res.status);
-  const lines = (await res.text()).split('\n');
+  const lines = (await coinMetricsCsv('btc')).split('\n');
   const head = lines[0].split(',');
   const iT = head.indexOf('time');
   const iCap = head.indexOf('CapMrktCurUSD');
@@ -199,12 +215,7 @@ export async function fetchCryptoBasket(candidates: [cm: string, gecko: string, 
   const members = settled.filter((x): x is PromiseFulfilledResult<Row[]> => x.status === 'fulfilled')
     .map(x => x.value);
   if (members.length < 3) throw new Error('Basket: nur ' + members.length + ' Mitglieder mit Historie');
-  const maps = members.map(rows => new Map(rows));
-  let common = [...maps[0].keys()];
-  for (const m of maps.slice(1)) common = common.filter(d => m.has(d));
-  common.sort();
-  const rebased = maps.map(m => { const p0 = m.get(common[0])!; return common.map(d => m.get(d)! / p0); });
-  return common.map((d, i) => [d, rebased.reduce((a, s2) => a + s2[i], 0) / maps.length]);
+  return equalWeightIndex(members);
 }
 
 /** Krypto: mehrere Quellen zusammenführen, damit die Aktualität nie an einem Anbieter hängt.
@@ -230,7 +241,7 @@ export async function fetchCrypto(cmAsset: string, geckoId: string, yahooSym?: s
   if (!parts.length) throw new Error(cmAsset + ': keine Quelle erreichbar — ' + errors.join(' · '));
   const merged = parts.flat();
   const newest = merged.reduce((a, r) => (r[0] > a ? r[0] : a), '');
-  const ageDays = Math.round((Date.now() - new Date(newest).getTime()) / 864e5);
+  const ageDays = staleDays(newest);
   if (ageDays > 5) console.warn(`${cmAsset}: neuester Kurs ist ${ageDays} Tage alt (${newest}) — ${errors.join(' · ') || 'alle Quellen lieferten veraltete Daten'}`);
   return merged;
 }

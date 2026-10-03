@@ -1,12 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Meta, Title } from '@angular/platform-browser';
 import { RouterStateSnapshot, TitleStrategy } from '@angular/router';
-
-const SITE = 'Macro Risk Dashboard';
-const ORIGIN = 'https://chipper-cucurucho-5d0a49.netlify.app';
-const HOME_TITLE = `${SITE} · Krypto · Metalle · KI · Währungen`;
-const HOME_DESC = 'Wie günstig oder teuer stehen Bitcoin, Gold, der Nasdaq und die großen Währungen — '
-  + 'gemessen an ihrer eigenen Geschichte? Täglich neu berechnete Perzentile statt Bauchgefühl.';
+import { HOME, ORIGIN, SITE_NAME } from '../../../metrics-core/site';
 
 /** Setzt Titel, Meta-Beschreibung und Canonical pro Route. Ohne das teilen sich alle
  *  Seiten einer SPA denselben Eintrag in Tab, Verlauf, Suchergebnis und Link-Vorschau.
@@ -19,7 +14,7 @@ export class AppTitleStrategy extends TitleStrategy {
 
   override updateTitle(snapshot: RouterStateSnapshot): void {
     const routeTitle = this.buildTitle(snapshot);
-    const title = routeTitle ? `${routeTitle} · ${SITE}` : HOME_TITLE;
+    const title = routeTitle ? `${routeTitle} · ${SITE_NAME}` : HOME.title;
     this.title.setTitle(title);
 
     // Beschreibung der tiefsten Route mit eigenem `data.description` gewinnt.
@@ -29,7 +24,7 @@ export class AppTitleStrategy extends TitleStrategy {
       route = route.firstChild;
       desc = (route.data['description'] as string | undefined) ?? desc;
     }
-    const description = desc ?? HOME_DESC;
+    const description = desc ?? HOME.description;
 
     this.meta.updateTag({ name: 'description', content: description });
     this.meta.updateTag({ property: 'og:title', content: title });
