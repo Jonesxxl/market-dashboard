@@ -8,6 +8,7 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "typecheck": "tsc --noEmit -p tsconfig.node.json",
+    "test:core": "tsx --test metrics-core/*.test.ts",
     "snapshot": "tsx scripts/build-snapshot.ts"
   },
   "private": true,

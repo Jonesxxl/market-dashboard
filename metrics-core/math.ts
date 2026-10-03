@@ -1,5 +1,5 @@
 /** metrics-core · Mathematik. Reine Funktionen, keine Abhängigkeiten. */
-import { MetricResult, Row } from './types';
+import { MetricKind, MetricResult, Row } from './types';
 
 /** Eingefrorene Konstanten der Zyklus-Risk-Metrik. Eingefroren heißt: Ein neues Extrem
  *  reskaliert die Historie NICHT rückwirkend (kein Repainting). Geändert wird nur bewusst,
@@ -25,6 +25,13 @@ export const RISK_CONSTANTS: Record<string, { lo: number; hi: number; genesis: s
 export const fmt = (n: number, d = 0): string =>
   n.toLocaleString('de-DE', { minimumFractionDigits: d, maximumFractionDigits: d });
 
+/** Anzeige eines 0…1-Werts: Risk mit drei Nachkommastellen, Heat mit zwei. Karte, Startseite
+ *  und statische Seiten nutzen dieselbe Regel — vorher stand sie dreimal im Code. */
+export const formatValue = (kind: MetricKind, value: number): string =>
+  value.toFixed(kind === 'risk' ? 3 : 2);
+
+export const kindLabel = (kind: MetricKind): string => (kind === 'risk' ? 'Risk' : 'Heat');
+
 export function dedupeSort(rows: Row[]): { dates: string[]; prices: number[] } {
   const map = new Map(rows);
   const dates = [...map.keys()].sort();
@@ -37,8 +44,22 @@ export function percentileRank(sortedAsc: number[], v: number): number {
   return lo / sortedAsc.length;
 }
 
-function staleDays(lastDate: string): number {
-  return Math.max(0, Math.round((Date.now() - new Date(lastDate).getTime()) / 864e5));
+/** Ganze Tage seit `lastDate`, nie negativ. `now` ist nur für Tests überschreibbar. */
+export function staleDays(lastDate: string, now = Date.now()): number {
+  return Math.max(0, Math.round((now - new Date(lastDate).getTime()) / 864e5));
+}
+
+/** Gleichgewichteter Korb: jedes Mitglied auf den ersten gemeinsamen Tag normiert (= 1),
+ *  dann täglich gemittelt. Nur Tage, an denen alle Mitglieder einen Kurs haben, gehen ein.
+ *  Genutzt vom KI-Aktienkorb und vom Digital-Asset-Basket — vorher zweimal wortgleich kopiert. */
+export function equalWeightIndex(members: Row[][]): Row[] {
+  if (!members.length) return [];
+  const maps = members.map(rows => new Map(rows));
+  let common = [...maps[0].keys()];
+  for (const m of maps.slice(1)) common = common.filter(d => m.has(d));
+  common.sort();
+  const rebased = maps.map(m => { const p0 = m.get(common[0])!; return common.map(d => m.get(d)! / p0); });
+  return common.map((d, i) => [d, rebased.reduce((a, s) => a + s[i], 0) / maps.length]);
 }
 
 /** Für Reihen, die bereits eine fertige Kennzahl sind (z.B. den MVRV-Z-Score): Der Rohwert

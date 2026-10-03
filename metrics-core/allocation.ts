@@ -2,7 +2,9 @@
  *  Deterministisch, regelbasiert, komplett client-seitig lauffähig.
  *  Erweiterbar an drei Stellen: ASSET_UNIVERSE (neue Assets), PROFILES (neue Profile),
  *  AllocationStrategy (neue Strategien). */
-import { MetricSnapshot } from './types';
+import { kindLabel } from './math';
+import { PALETTE } from './palette';
+import { MetricKind, MetricSnapshot } from './types';
 
 /* ===== Investierbares Universum: Asset ↔ Metrik ===== */
 export type AssetClassKey = 'crypto' | 'metal' | 'equity' | 'cash';
@@ -17,14 +19,14 @@ export interface AssetDef {
 }
 
 export const ASSET_UNIVERSE: AssetDef[] = [
-  { id: 'btc', label: 'Bitcoin', hex: '#E8963C', cls: 'crypto', metricId: 'btc-risk', intraClass: 0.70 },
-  { id: 'eth', label: 'Ethereum', hex: '#8A7BF0', cls: 'crypto', metricId: 'eth-risk', intraClass: 0.30 },
-  { id: 'gold', label: 'Gold', hex: '#E3C05A', cls: 'metal', metricId: 'gold-heat', intraClass: 0.60 },
-  { id: 'silver', label: 'Silber', hex: '#B8C4D4', cls: 'metal', metricId: 'silver-heat', intraClass: 0.25 },
-  { id: 'pall', label: 'Palladium', hex: '#7FD0C9', cls: 'metal', metricId: 'pall-heat', intraClass: 0.15 },
-  { id: 'ndx', label: 'Nasdaq 100 (ETF)', hex: '#5FA8F5', cls: 'equity', metricId: 'ndx-heat', intraClass: 0.70 },
-  { id: 'ai', label: 'KI-Aktien-Korb', hex: '#F06FA8', cls: 'equity', metricId: 'ai-basket-heat', intraClass: 0.30 },
-  { id: 'cash', label: 'Cash-Puffer', hex: '#8A97AC', cls: 'cash', metricId: null, intraClass: 1 },
+  { id: 'btc', label: 'Bitcoin', hex: PALETTE.btc, cls: 'crypto', metricId: 'btc-risk', intraClass: 0.70 },
+  { id: 'eth', label: 'Ethereum', hex: PALETTE.eth, cls: 'crypto', metricId: 'eth-risk', intraClass: 0.30 },
+  { id: 'gold', label: 'Gold', hex: PALETTE.gold, cls: 'metal', metricId: 'gold-heat', intraClass: 0.60 },
+  { id: 'silver', label: 'Silber', hex: PALETTE.silver, cls: 'metal', metricId: 'silver-heat', intraClass: 0.25 },
+  { id: 'pall', label: 'Palladium', hex: PALETTE.pall, cls: 'metal', metricId: 'pall-heat', intraClass: 0.15 },
+  { id: 'ndx', label: 'Nasdaq 100 (ETF)', hex: PALETTE.ndx, cls: 'equity', metricId: 'ndx-heat', intraClass: 0.70 },
+  { id: 'ai', label: 'KI-Aktien-Korb', hex: PALETTE.ai, cls: 'equity', metricId: 'ai-basket-heat', intraClass: 0.30 },
+  { id: 'cash', label: 'Cash-Puffer', hex: PALETTE.muted, cls: 'cash', metricId: null, intraClass: 1 },
 ];
 
 /* ===== Risikoprofile ===== */
@@ -52,7 +54,7 @@ export interface AllocationRow {
   targetWeight: number;    // nach Tilt + Constraints (0…1, Summe 1)
   signal: number;          // −1…+1 aus der Metrik (0 wenn keine Daten)
   metricValue: number | null;
-  metricKind: 'risk' | 'heat' | null;
+  metricKind: MetricKind | null;
   hasData: boolean;
   note: string;            // Ein-Satz-Begründung
 }
@@ -143,7 +145,7 @@ export const signalTiltStrategy: AllocationStrategy = {
         r.note = 'Keine aktuellen Metrik-Daten — bleibt auf Basisgewicht (kein Tilt).';
       } else {
         const v = r.metricValue!.toFixed(2);
-        const name = r.metricKind === 'risk' ? 'Risk' : 'Heat';
+        const name = kindLabel(r.metricKind ?? 'heat');
         r.note = r.signal > 0.3 ? `${name} ${v} — historisch günstige Zone, wird übergewichtet.`
           : r.signal < -0.3 ? `${name} ${v} — historisch heiße Zone, wird untergewichtet.`
           : `${name} ${v} — neutraler Bereich, nahe Basisgewicht.`;

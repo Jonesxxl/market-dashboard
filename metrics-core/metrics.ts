@@ -1,8 +1,9 @@
 /** metrics-core · Registry. Eine neue Metrik = ein neuer Eintrag hier — Snapshot, Report und
  *  Generator sehen sie automatisch. */
-import { computeHeat, computeIndicator, computeRisk, defaultSignal, fmt, RISK_CONSTANTS } from './math';
+import { computeHeat, computeIndicator, computeRisk, defaultSignal, fmt, ratioSeries, RISK_CONSTANTS } from './math';
+import { PALETTE } from './palette';
 import { fetchBtcMvrvZ, fetchCrypto, fetchCryptoBasket, fetchMarket } from './sources';
-import { MetricDefinition, MetricResult, Row } from './types';
+import { FetchContext, MetricDefinition, MetricResult, MetricSnapshot, Row } from './types';
 
 const round = (n: number) => Math.round(n);
 
@@ -34,11 +35,22 @@ function fxInterpret(up: string, down: string, r: MetricResult, seitJahr: string
 
 const RISK_LEVELS = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5];
 
+/** Gemeinsamer Zusatzblock der Risk-Metriken: Kursniveaus je Risk-Stufe, das kalibrierte
+ *  Fenster für die Statistikzeile, die Chart-Linien bei 0,30/0,70 und die Marken früherer
+ *  Böden und Hochs. Nur die Marken unterscheiden sich zwischen den Assets. */
+const riskExtra = (key: string, ghosts: { r: number; t: string }[]) =>
+  (r: MetricResult): MetricSnapshot['extra'] => ({
+    riskLevels: RISK_LEVELS.map(lv => ({ r: lv, price: Math.round(r.priceForValue!(lv)) })),
+    smaDays: RISK_CONSTANTS[key].W,
+    chartBands: [0.30, 0.70],
+    ghosts,
+  });
+
 /* ===== Krypto ===== */
 const crypto: MetricDefinition[] = [
   {
     id: 'btc-risk', label: 'Bitcoin', sym: 'BTC', assetClass: 'crypto', kind: 'risk',
-    unit: '$', dec: 0, hex: '#E8963C',
+    unit: '$', dec: 0, hex: PALETTE.btc,
     /* Schwellen der v2-Kalibrierung. Abgeleitet, nicht geraten: Die obere Stufe liegt auf
        der gestrichelten Kauflinie (0,30 — trifft 17,1 % aller Tage), die beiden unteren
        bilden dieselbe Kaskadenform wie unter v1 nach (4,6 % und 1,1 % gegenüber früher
@@ -52,21 +64,16 @@ const crypto: MetricDefinition[] = [
     fetch: ctx => fetchCrypto('btc', 'bitcoin', 'BTC-USD', ctx),
     compute: rows => computeRisk(rows, 'btc'),
     interpret: r => riskInterpret('BTC', r),
-    extra: r => ({
-      riskLevels: RISK_LEVELS.map(lv => ({ r: lv, price: Math.round(r.priceForValue!(lv)) })),
-      smaDays: RISK_CONSTANTS['btc'].W,
-      chartBands: [0.30, 0.70],
-      // Aus der v2-Kalibrierung neu bestimmt. Die Böden 2015, 2018 und 2022 liegen mit
-      // 0.099/0.110/0.091 so dicht beieinander, dass getrennte Marken sich überlappen.
-      ghosts: [
-        { r: 0.10, t: 'Böden 15/18/22' },
-        { r: 0.56, t: 'ATH 25' }, { r: 0.88, t: 'ATH 21' },
-      ],
-    }),
+    // Marken aus der v2-Kalibrierung neu bestimmt. Die Böden 2015, 2018 und 2022 liegen mit
+    // 0.099/0.110/0.091 so dicht beieinander, dass getrennte Marken sich überlappen.
+    extra: riskExtra('btc', [
+      { r: 0.10, t: 'Böden 15/18/22' },
+      { r: 0.56, t: 'ATH 25' }, { r: 0.88, t: 'ATH 21' },
+    ]),
   },
   {
     id: 'eth-risk', label: 'Ethereum', sym: 'ETH', assetClass: 'crypto', kind: 'risk',
-    unit: '$', dec: 0, hex: '#8A7BF0',
+    unit: '$', dec: 0, hex: PALETTE.eth,
     /* Ethereum steht weiter auf der v1-Kalibrierung — ohne Referenzpunkte wäre jede
        Neuberechnung geraten. Angeglichen ist nur die obere Stufe, damit sie wie bei
        Bitcoin auf der gestrichelten Kauflinie sitzt. */
@@ -79,15 +86,10 @@ const crypto: MetricDefinition[] = [
     fetch: ctx => fetchCrypto('eth', 'ethereum', 'ETH-USD', ctx),
     compute: rows => computeRisk(rows, 'eth'),
     interpret: r => riskInterpret('ETH', r),
-    extra: r => ({
-      riskLevels: RISK_LEVELS.map(lv => ({ r: lv, price: Math.round(r.priceForValue!(lv)) })),
-      smaDays: RISK_CONSTANTS['eth'].W,
-      chartBands: [0.30, 0.70],
-      ghosts: [
-        { r: 0.00, t: 'Boden 18' }, { r: 0.09, t: 'Boden 22' },
-        { r: 0.71, t: 'ATH 25' }, { r: 0.88, t: 'ATH 18' },
-      ],
-    }),
+    extra: riskExtra('eth', [
+      { r: 0.00, t: 'Boden 18' }, { r: 0.09, t: 'Boden 22' },
+      { r: 0.71, t: 'ATH 25' }, { r: 0.88, t: 'ATH 18' },
+    ]),
   },
 ];
 
@@ -97,7 +99,7 @@ const crypto: MetricDefinition[] = [
 crypto.push({
   id: 'btc-mvrv-z',
   label: 'Bitcoin · Börsenwert gegen Einstand der Halter (MVRV-Z-Score)',
-  sym: 'MVRV-Z', assetClass: 'crypto', kind: 'heat', unit: '', dec: 2, hex: '#E8963C',
+  sym: 'MVRV-Z', assetClass: 'crypto', kind: 'heat', unit: '', dec: 2, hex: PALETTE.btc,
   zones: [{ label: 'Kaufzone', text: '< 0.15', below: 0.15 }], hotAbove: 0.85,
   fetch: () => fetchBtcMvrvZ(),
   compute: rows => computeIndicator(rows),
@@ -179,16 +181,22 @@ const metalDef = (id: string, label: string, sym: string, hex: string, y: string
   interpret: r => heatInterpret(label, r, r.dates[0].slice(0, 4)),
 });
 const metals: MetricDefinition[] = [
-  metalDef('gold-heat', 'Gold', 'XAU/USD', '#E3C05A', 'GC=F', 'xauusd'),
-  metalDef('silver-heat', 'Silber', 'XAG/USD', '#B8C4D4', 'SI=F', 'xagusd'),
-  metalDef('pall-heat', 'Palladium', 'XPD/USD', '#7FD0C9', 'PA=F', 'xpdusd'),
+  metalDef('gold-heat', 'Gold', 'XAU/USD', PALETTE.gold, 'GC=F', 'xauusd'),
+  metalDef('silver-heat', 'Silber', 'XAG/USD', PALETTE.silver, 'SI=F', 'xagusd'),
+  metalDef('pall-heat', 'Palladium', 'XPD/USD', PALETTE.pall, 'PA=F', 'xpdusd'),
 ];
 
 /* ===== Aktien / Kredit ===== */
+/** Verhältnis zweier Kurse am selben Tag, je Seite mit Yahoo- und Stooq-Symbol. */
+const ratioFetch = (a: [string, string], b: [string, string]) => async (ctx: FetchContext): Promise<Row[]> => {
+  const [ra, rb] = await Promise.all([fetchMarket(ctx, ...a), fetchMarket(ctx, ...b)]);
+  return ratioSeries(ra, rb);
+};
+
 const equity: MetricDefinition[] = [
   {
     id: 'ndx-heat', label: 'Nasdaq 100', sym: '^NDX', assetClass: 'equity', kind: 'heat',
-    unit: 'Pkt.', dec: 0, hex: '#5FA8F5', zones: kaufzone, hotAbove: 0.85,
+    unit: 'Pkt.', dec: 0, hex: PALETTE.ndx, zones: kaufzone, hotAbove: 0.85,
     fetch: ctx => fetchMarket(ctx, '^NDX', '^ndq'),
     compute: rows => computeHeat(rows),
     interpret: r => {
@@ -203,11 +211,7 @@ const equity: MetricDefinition[] = [
     id: 'conc-heat', label: 'Konzentration · S&P 500 kapitalgewichtet ÷ gleichgewichtet (SPY/RSP)',
     sym: 'SPY/RSP', assetClass: 'equity', kind: 'heat', unit: '', dec: 3, hex: '#F2B33D',
     zones: kaufzone, hotAbove: 0.85,
-    fetch: async ctx => {
-      const { ratioSeries } = await import('./math');
-      const [a, b] = await Promise.all([fetchMarket(ctx, 'SPY', 'spy.us'), fetchMarket(ctx, 'RSP', 'rsp.us')]);
-      return ratioSeries(a, b);
-    },
+    fetch: ratioFetch(['SPY', 'spy.us'], ['RSP', 'rsp.us']),
     compute: rows => computeHeat(rows),
     interpret: r => `Steigt diese Kurve, wachsen die größten Konzerne schneller als der Rest des Index — der Markt hängt an immer weniger Aktien. Genau diese Konzentration war ein Kennzeichen von 2000. ${r.current.value > 0.85 ? '<b>Aktuell im historischen Extrembereich.</b>' : r.current.value < 0.15 ? 'Aktuell historisch niedrig — der breite Markt trägt mit.' : 'Aktuell im normalen Bereich.'}`,
   },
@@ -215,11 +219,7 @@ const equity: MetricDefinition[] = [
     id: 'credit-heat', label: 'Kredit-Risikoappetit · Hochzins- ÷ Qualitätsanleihen (HYG/LQD)',
     sym: 'HYG/LQD', assetClass: 'credit', kind: 'heat', unit: '', dec: 3, hex: '#22C6B8',
     zones: kaufzone, hotAbove: 0.85,
-    fetch: async ctx => {
-      const { ratioSeries } = await import('./math');
-      const [a, b] = await Promise.all([fetchMarket(ctx, 'HYG', 'hyg.us'), fetchMarket(ctx, 'LQD', 'lqd.us')]);
-      return ratioSeries(a, b);
-    },
+    fetch: ratioFetch(['HYG', 'hyg.us'], ['LQD', 'lqd.us']),
     compute: rows => computeHeat(rows),
     interpret: r => `Steigt diese Kurve, greifen Anleger sorglos zu riskanten Anleihen — enge Credit Spreads, viel Risikoappetit. Fällt sie, verlangt der Anleihemarkt wieder Risikoprämien: historisch eines der frühesten Warnsignale vor Aktien-Tops. ${r.current.value > 0.85 ? '<b>Aktuell maximale Sorglosigkeit.</b>' : r.current.value < 0.15 ? '<b>Aktuell Stress im Kreditmarkt</b> — Vorsicht bei Aktien.' : 'Aktuell unauffällig.'}`,
   },

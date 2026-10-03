@@ -1,55 +1,29 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { Routes, RouterLink, RouterLinkActive, RouterOutlet, Router, NavigationEnd } from '@angular/router';
-import { MarketDataService, fmt } from './core/market-data.service';
+import { Route, Routes, RouterLink, RouterLinkActive, RouterOutlet, Router, NavigationEnd } from '@angular/router';
+import { PAGES, PagePath } from '../../metrics-core/site';
+import { MarketDataService } from './core/market-data.service';
 
 declare global {
   interface Window { goatcounter?: { count: (opts: { path: string }) => void }; }
 }
 
 /* ===== Routen ===== */
-/* `title` und `data.description` werden von der AppTitleStrategy (src/app/core/title-strategy.ts)
-   zu Titel, Meta-Beschreibung, OG-Tags und Canonical verarbeitet — ohne das teilen sich alle
-   Routen denselben Eintrag in Tab, Suchergebnis und Link-Vorschau. */
+/* Titel und Beschreibung stehen in metrics-core/site.ts, weil der Generator der statischen
+   Seiten dieselben Texte braucht. Die AppTitleStrategy (src/app/core/title-strategy.ts)
+   macht daraus Titel, Meta-Beschreibung, OG-Tags und Canonical. */
+const page = (path: PagePath, loadComponent: Route['loadComponent']): Route => ({
+  path, title: PAGES[path].title, data: { description: PAGES[path].description }, loadComponent,
+});
+
 export const routes: Routes = [
-  {
-    path: '', title: '',
-    loadComponent: () => import('./pages/landing.component').then(m => m.LandingComponent),
-  },
-  {
-    path: 'krypto', title: 'Krypto — Risk-Metrik für Bitcoin und Ethereum',
-    data: { description: 'Zyklus-Risk für Bitcoin und Ethereum: 0 entspricht dem Niveau historischer Böden, 1 dem historischer Tops. Dazu Kursniveaus je Risk-Zone, der Digital-Asset-Basket und der Vergleich der Bärenmärkte 2017/18 und 2025/26.' },
-    loadComponent: () => import('./pages/crypto.component').then(m => m.CryptoComponent),
-  },
-  {
-    path: 'metalle', title: 'Edelmetalle — Gold, Silber und Palladium',
-    data: { description: 'Heat-Perzentile für Gold, Silber und Palladium: wie weit der Kurs von seinem 200-Tage-Durchschnitt abweicht und wie selten das historisch war. Dazu Gold/Silber- und Palladium/Gold-Verhältnis.' },
-    loadComponent: () => import('./pages/metals.component').then(m => m.MetalsComponent),
-  },
-  {
-    path: 'nasdaq-ki', title: 'Nasdaq und KI — Blasen-Score',
-    data: { description: 'Der KI-Blasen-Score bündelt fünf Messgrößen: Nasdaq-Trend, Trend des KI-Baskets, dessen Vorsprung vor dem S&P 500, die Marktkonzentration (SPY/RSP) und den Kredit-Risikoappetit (HYG/LQD).' },
-    loadComponent: () => import('./pages/ai.component').then(m => m.AiComponent),
-  },
-  {
-    path: 'waehrungen', title: 'Währungen — Dollar-Index und Paare',
-    data: { description: 'Dollar-Index, USD/EUR, USD/CHF, USD/CNY, USD/GHS und das Kreuzpaar CHF/EUR — je Karte der Heat-Wert und der tatsächliche Kursverlauf. Bei den Dollar-Paaren bedeutet eine steigende Kurve immer einen stärkeren Dollar.' },
-    loadComponent: () => import('./pages/fx.component').then(m => m.FxComponent),
-  },
-  {
-    path: 'generator', title: 'Sparplan- und Rebalancing-Generator',
-    data: { description: 'Leitet aus den aktuellen Signalen eine Gewichtung für Sparrate oder Depot ab. Die Berechnung läuft vollständig im Browser — eingegebene Beträge werden nicht übertragen und nicht gespeichert.' },
-    loadComponent: () => import('./pages/generator.component').then(m => m.GeneratorComponent),
-  },
-  {
-    path: 'impressum', title: 'Impressum',
-    data: { description: 'Anbieterkennzeichnung nach § 5 DDG sowie Hinweise zu Haftung und Inhalt des Macro Risk Dashboards.' },
-    loadComponent: () => import('./pages/impressum.component').then(m => m.ImpressumComponent),
-  },
-  {
-    path: 'datenschutz', title: 'Datenschutz',
-    data: { description: 'Diese Seite setzt keine Cookies, nutzt keinen LocalStorage und enthält keine Formulare. Welche Daten beim Aufruf trotzdem verarbeitet werden, steht hier.' },
-    loadComponent: () => import('./pages/datenschutz.component').then(m => m.DatenschutzComponent),
-  },
+  { path: '', title: '', loadComponent: () => import('./pages/landing.component').then(m => m.LandingComponent) },
+  page('krypto', () => import('./pages/crypto.component').then(m => m.CryptoComponent)),
+  page('metalle', () => import('./pages/metals.component').then(m => m.MetalsComponent)),
+  page('nasdaq-ki', () => import('./pages/ai.component').then(m => m.AiComponent)),
+  page('waehrungen', () => import('./pages/fx.component').then(m => m.FxComponent)),
+  page('generator', () => import('./pages/generator.component').then(m => m.GeneratorComponent)),
+  page('impressum', () => import('./pages/impressum.component').then(m => m.ImpressumComponent)),
+  page('datenschutz', () => import('./pages/datenschutz.component').then(m => m.DatenschutzComponent)),
   { path: '**', redirectTo: '' },
 ];
 
@@ -190,5 +164,4 @@ export class AppComponent {
   }
 
   protected reload(): void { this.data.reload(); }
-  protected readonly fmt = fmt;
 }

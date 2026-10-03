@@ -46,7 +46,7 @@ export class MarketDataService {
     // Lokal hat der eigene Build Vorrang — sonst zeigt die Entwicklungsumgebung die
     // Produktionsdaten von GitHub und ein frisch gebauter Snapshot bliebe unsichtbar.
     const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-    const urls = SNAPSHOT_REMOTE && !local ? [SNAPSHOT_REMOTE, '/snapshot.json'] : ['/snapshot.json'];
+    const urls = local ? ['/snapshot.json'] : [SNAPSHOT_REMOTE, '/snapshot.json'];
     let lastErr: unknown = null;
     for (const url of urls) {
       try {

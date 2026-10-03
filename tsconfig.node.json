@@ -12,6 +12,7 @@
   },
   "include": [
     "scripts/**/*.ts",
-    "metrics-core/**/*.ts"
+    "metrics-core/**/*.ts",
+    "tailwind.config.ts"
   ]
 }
