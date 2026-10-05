@@ -7,7 +7,7 @@ import { fmt } from '../../../metrics-core/math';
 export { fmt };
 export type { BearSnapshot, BubbleSnapshot, MetricSnapshot, RatioSnapshot, Snapshot };
 
-/** Primärquelle: Raw-URL des Repos. Der tägliche Lauf committet dorthin, also sind die
+/** Primärquelle: Raw-URL des Repos. Der Snapshot-Lauf committet dorthin, also sind die
  *  Daten auch dann aktuell, wenn ein Netlify-Build scheitert oder hängt. Die Kopie aus
  *  dem Build-Paket bleibt Fallback — fällt GitHub aus, zeigt die Seite weiter Zahlen. */
 const SNAPSHOT_REMOTE = 'https://raw.githubusercontent.com/Jonesxxl/market-dashboard/main/public/snapshot.json';
@@ -20,7 +20,7 @@ export class MarketDataService {
   readonly error = computed(() => this.market.error() ? 'Snapshot konnte nicht geladen werden.' : null);
   readonly failed = computed(() => this.market.value()?.failed ?? []);
   readonly generatedAt = computed(() => this.market.value()?.generatedAt ?? null);
-  /** Zeigt das Demo-JSON aus dem Build-Paket an? Dann lief der tägliche Cron noch nie. */
+  /** Zeigt das Demo-JSON aus dem Build-Paket an? Dann lief der Snapshot-Lauf noch nie. */
   readonly isBootstrap = computed(() => this.market.value()?.bootstrap === true);
   /** Alter des Snapshots in Tagen — für die Staleness-Warnung im Header. */
   readonly ageDays = computed(() => {
@@ -46,7 +46,7 @@ export class MarketDataService {
     // Lokal hat der eigene Build Vorrang — sonst zeigt die Entwicklungsumgebung die
     // Produktionsdaten von GitHub und ein frisch gebauter Snapshot bliebe unsichtbar.
     const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
-    const urls = SNAPSHOT_REMOTE && !local ? [SNAPSHOT_REMOTE, '/snapshot.json'] : ['/snapshot.json'];
+    const urls = local ? ['/snapshot.json'] : [SNAPSHOT_REMOTE, '/snapshot.json'];
     let lastErr: unknown = null;
     for (const url of urls) {
       try {

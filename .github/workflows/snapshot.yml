@@ -1,8 +1,12 @@
-name: Täglicher Metrik-Snapshot
+name: Metrik-Snapshot (alle zwei Tage)
 
 on:
   schedule:
-    - cron: '17 5 * * *'   # täglich 05:17 UTC (nach US-Handelsschluss, vor EU-Morgen)
+    # Alle zwei Tage um 05:17 UTC (nach US-Handelsschluss, vor dem EU-Morgen). `*/2` im Feld
+    # für den Monatstag heißt: an jedem ungeraden Tag. Nach einem 31. folgt deshalb direkt
+    # der 1. — dann liegen ausnahmsweise nur 24 Stunden dazwischen, nie mehr als 48.
+    # Wer den Takt ändert, muss SNAPSHOT_INTERVAL_DAYS in metrics-core/site.ts mitziehen.
+    - cron: '17 5 */2 * *'
   workflow_dispatch: {}     # manueller Start möglich
 
 permissions:

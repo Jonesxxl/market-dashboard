@@ -8,7 +8,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-datenschutz',
   template: `
-    <article class="bg-panel border border-line rounded-2xl p-6 md:p-8 max-w-3xl">
+    <article class="card p-6 md:p-8 max-w-3xl">
       <h2 class="text-2xl font-bold text-fg mb-6">Datenschutzerklärung</h2>
 
       <div class="font-mono text-[12.5px] text-mid border border-dashed border-mid rounded-xl px-4 py-3 mb-7">
@@ -63,13 +63,13 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
 
       <h3 class="text-fg font-bold text-base mb-2">5. Abruf der Marktdaten von GitHub</h3>
       <p class="text-muted text-[14px] leading-relaxed mb-6">
-        Die angezeigten Kennzahlen werden einmal täglich vorberechnet und als Datei
+        Die angezeigten Kennzahlen werden alle zwei Tage vorberechnet und als Datei
         <code class="text-fg">snapshot.json</code> in einem öffentlichen GitHub-Repository abgelegt.
         Dein Browser lädt diese Datei direkt von <code class="text-fg">raw.githubusercontent.com</code>
         (GitHub, Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, USA). Dabei wird deine
         IP-Adresse an GitHub übertragen — technisch unvermeidbar, da ohne sie keine Verbindung
         zustande käme. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO (berechtigtes Interesse an
-        tagesaktuellen Daten, die auch dann noch stimmen, wenn ein Deployment fehlschlägt). Ist GitHub
+        aktuellen Daten, die auch dann noch stimmen, wenn ein Deployment fehlschlägt). Ist GitHub
         nicht erreichbar, greift die Seite auf eine mitausgelieferte Kopie auf dem eigenen Server
         zurück; dann entsteht keine Verbindung zu GitHub.
       </p>

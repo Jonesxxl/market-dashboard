@@ -1,38 +1,46 @@
-/** metrics-core · Snapshot-Builder. Läuft im täglichen Cron; das Frontend konsumiert nur das JSON. */
-import { computeHeat, fmt, monthly, percentileRank, stats } from './math';
+/** metrics-core · Snapshot-Builder. Läuft im Snapshot-Cron (alle zwei Tage); das Frontend konsumiert nur das JSON. */
+import { einordnenAngezeigt } from './lage';
+import { computeHeat, equalWeightIndex, fmt, monthly, percentileRank, stats } from './math';
 import { defaultSignal, REGISTRY } from './metrics';
-import { fetchCrypto, fetchMarket } from './sources';
+import { PALETTE } from './palette';
+import { fetchMarket } from './sources';
 import {
-  BearSnapshot, BubbleSnapshot, FetchContext, MetricResult, MetricSnapshot,
-  RatioSnapshot, Row, Snapshot,
+  BearSnapshot, BubbleSnapshot, FetchContext, Lage, MetricResult, MetricSnapshot,
+  RatioSnapshot, Snapshot, Zone,
 } from './types';
+
+/** Ergebnisse der Registry-Metriken nach ID — Grundlage der abgeleiteten Blöcke. */
+type Results = Map<string, MetricResult>;
 
 export async function buildSnapshot(ctx: FetchContext): Promise<Snapshot> {
   const failed: string[] = [];
-  const results = new Map<string, { result: MetricResult; rows: Row[] }>();
+  const results: Results = new Map();
 
   // Registry-Metriken ausfalltolerant, mit gestaffeltem Start (Rate-Limits schonen)
   const settled = await Promise.allSettled(REGISTRY.map(async (def, i) => {
     await new Promise<void>(res => setTimeout(res, i * 400));
     const rows = await def.fetch(ctx);
-    return { def, rows, result: def.compute(rows) };
+    return { def, result: def.compute(rows) };
   }));
   const metrics: MetricSnapshot[] = [];
   settled.forEach((s, i) => {
     if (s.status === 'rejected') { failed.push(REGISTRY[i].id); console.warn(REGISTRY[i].id, s.reason); return; }
-    const { def, rows, result } = s.value;
-    results.set(def.id, { result, rows });
+    const { def, result } = s.value;
+    results.set(def.id, result);
+    const value = +result.current.value.toFixed(3);
     metrics.push({
-      id: def.id, label: def.label, sym: def.sym, assetClass: def.assetClass, kind: def.kind,
+      id: def.id, label: def.label, short: def.short, sym: def.sym, assetClass: def.assetClass, kind: def.kind,
       unit: def.unit, dec: def.dec, hex: def.hex,
       current: {
         ...result.current,
         price: +result.current.price.toFixed(def.dec + 2),
         sma: +result.current.sma.toFixed(def.dec + 2),
-        value: +result.current.value.toFixed(3),
+        value,
       },
       signal: defaultSignal(result.current.value),
-      interpret: def.interpret(result),
+      // Eingeordnet wird der Wert, wie ihn die Seite zeigt — sonst hieße 0,149 im Text
+      // „Kaufzone", während daneben 0,15 steht.
+      interpret: def.interpret(result, einordnenAngezeigt(def.kind, value, def.zones, def.hotAbove)),
       zones: def.zones, hotAbove: def.hotAbove,
       series: monthly(result.dates, result.values, result.prices),
       stats: stats(result.prices),
@@ -56,11 +64,11 @@ export async function buildSnapshot(ctx: FetchContext): Promise<Snapshot> {
 }
 
 /* ===== Metall-Ratios ===== */
-function buildRatios(results: Map<string, { result: MetricResult }>, failed: string[]): RatioSnapshot[] {
+function buildRatios(results: Results, failed: string[]): RatioSnapshot[] {
   const out: RatioSnapshot[] = [];
   const mk = (id: string, title: string, aId: string, bId: string,
     note: (v: number, p: number) => string): void => {
-    const A = results.get(aId)?.result; const B = results.get(bId)?.result;
+    const A = results.get(aId); const B = results.get(bId);
     if (!A || !B) return;
     try {
       const mB = new Map(B.dates.map((d, i) => [d, B.prices[i]]));
@@ -93,8 +101,8 @@ function buildRatios(results: Map<string, { result: MetricResult }>, failed: str
 }
 
 /* ===== Bärenmarkt-Vergleich (BTC) ===== */
-function buildBear(results: Map<string, { result: MetricResult }>, failed: string[]): BearSnapshot | null {
-  const S = results.get('btc-risk')?.result;
+function buildBear(results: Results, failed: string[]): BearSnapshot | null {
+  const S = results.get('btc-risk');
   if (!S) return null;
   try {
     const MAX = 430;
@@ -119,8 +127,8 @@ function buildBear(results: Map<string, { result: MetricResult }>, failed: strin
     return {
       maxDays: MAX, todayDay: today,
       cycles: [
-        { name: 'Zyklus 2017/18', hex: '#8A97AC', peakDate: alt.peakDate, peak: alt.peak, days: alt.days, pct: alt.pct, prices: alt.prices, dates: alt.dates },
-        { name: 'Zyklus 2025/26', hex: '#E8963C', peakDate: neu.peakDate, peak: neu.peak, days: neu.days, pct: neu.pct, prices: neu.prices, dates: neu.dates },
+        { name: 'Zyklus 2017/18', hex: PALETTE.muted, peakDate: alt.peakDate, peak: alt.peak, days: alt.days, pct: alt.pct, prices: alt.prices, dates: alt.dates },
+        { name: 'Zyklus 2025/26', hex: PALETTE.btc, peakDate: neu.peakDate, peak: neu.peak, days: neu.days, pct: neu.pct, prices: neu.prices, dates: neu.dates },
       ],
       stats: {
         at18: +(alt.rawPrices[Math.min(today, alt.rawLen - 1)] / alt.peak).toFixed(3),
@@ -133,9 +141,17 @@ function buildBear(results: Map<string, { result: MetricResult }>, failed: strin
 }
 
 /* ===== KI-Blasen-Score (inkl. Basket + rel. Stärke, hier berechnet) ===== */
-async function buildBubble(ctx: FetchContext, results: Map<string, { result: MetricResult }>,
+/** Lage des KI-Korbs in Worten — dieselbe Einordnung wie bei allen Registry-Metriken. */
+const KI_KORB: Record<Lage, string> = {
+  warn: '<b>Der Korb läuft historisch heiß</b> — das ist die Warnzone.',
+  hoch: 'Der Korb läuft <b>ungewöhnlich heiß</b>, aber noch nicht in der Warnzone.',
+  neutral: 'Der Korb bewegt sich im normalen Bereich seiner Geschichte.',
+  tief: 'Der Korb steht <b>ungewöhnlich tief</b>, aber noch nicht in der Kaufzone.',
+  kauf: '<b>Der Korb ist historisch ausgewaschen</b> — das ist die Kaufzone.',
+};
+async function buildBubble(ctx: FetchContext, results: Results,
   failed: string[]): Promise<{ bubble: BubbleSnapshot; basket: MetricSnapshot } | null> {
-  const n = results.get('ndx-heat')?.result;
+  const n = results.get('ndx-heat');
   if (!n) return null;
   try {
     const basketSyms: [string, string][] = [['NVDA', 'nvda.us'], ['MSFT', 'msft.us'], ['META', 'meta.us'], ['AMD', 'amd.us'], ['AVGO', 'avgo.us']];
@@ -143,28 +159,27 @@ async function buildBubble(ctx: FetchContext, results: Map<string, { result: Met
       fetchMarket(ctx, '^GSPC', '^spx'),
       ...basketSyms.map(([y, s]) => fetchMarket(ctx, y, s)),
     ]);
-    const maps = stocks.map(rows => new Map(rows));
-    let common = [...maps[0].keys()];
-    for (const m of maps.slice(1)) common = common.filter(d => m.has(d));
-    common.sort();
-    const rebased = maps.map(m => { const p0 = m.get(common[0])!; return common.map(d => m.get(d)! / p0); });
-    const basketPrices = common.map((_, i) => rebased.reduce((a, s) => a + s[i], 0) / maps.length);
-    const basket = computeHeat(common.map((d, i) => [d, basketPrices[i]] as Row));
+    const basketRows = equalWeightIndex(stocks);
+    const basket = computeHeat(basketRows);
 
     const spxMap = new Map(spx);
     const rsVals: number[] = [];
-    common.forEach((d, i) => { const s = spxMap.get(d); if (s) rsVals.push(basketPrices[i] / s); });
+    for (const [d, p] of basketRows) { const s = spxMap.get(d); if (s) rsVals.push(p / s); }
     const rsSorted = [...rsVals].sort((a, b) => a - b);
     const rsPct = percentileRank(rsSorted, rsVals[rsVals.length - 1]);
 
     // Basket als vollwertige Metrik in den Snapshot heben (Registry-Format)
+    const zones: Zone[] = [{ label: 'Kaufzone', text: '< 0.15', below: 0.15 }];
+    const value = +basket.current.value.toFixed(3);
     const basketSnap: MetricSnapshot = {
       id: 'ai-basket-heat', label: 'KI-Basket · NVDA, MSFT, META, AMD, AVGO (gleichgewichtet)',
-      sym: 'AI-5', assetClass: 'equity', kind: 'heat', unit: '× Start', dec: 2, hex: '#F06FA8',
-      current: { ...basket.current, value: +basket.current.value.toFixed(3), price: +basket.current.price.toFixed(2), sma: +basket.current.sma.toFixed(2) },
+      short: 'KI-Aktien-Korb',
+      sym: 'AI-5', assetClass: 'equity', kind: 'heat', unit: '× Start', dec: 2, hex: PALETTE.ai,
+      current: { ...basket.current, value, price: +basket.current.price.toFixed(2), sma: +basket.current.sma.toFixed(2) },
       signal: defaultSignal(basket.current.value),
-      interpret: `Fünf KI-Schwergewichte zu einem Korb gemittelt, damit keine Einzelaktie das Bild verzerrt. ${basket.current.value > 0.85 ? 'Der Korb läuft historisch heiß.' : basket.current.value < 0.15 ? 'Der Korb ist historisch ausgewaschen.' : 'Der Korb bewegt sich im normalen Bereich seiner Geschichte.'}`,
-      zones: [{ label: 'Kaufzone', text: '< 0.15', below: 0.15 }], hotAbove: 0.85,
+      interpret: 'Fünf KI-Schwergewichte zu einem Korb gemittelt, damit keine Einzelaktie das Bild verzerrt. '
+        + KI_KORB[einordnenAngezeigt('heat', value, zones, 0.85).lage],
+      zones, hotAbove: 0.85,
       series: monthly(basket.dates, basket.values, basket.prices),
       stats: stats(basket.prices),
     };
@@ -174,9 +189,9 @@ async function buildBubble(ctx: FetchContext, results: Map<string, { result: Met
       ['KI-Aktien-Trend', basket.current.value, 'Wie heiß laufen die KI-Aktien selbst?'],
       ['Vorsprung vor dem Markt', +rsPct.toFixed(3), 'Wie extrem laufen KI-Aktien dem S&P davon?'],
     ];
-    const conc = results.get('conc-heat')?.result;
-    const cred = results.get('credit-heat')?.result;
-    if (conc) comps.push(['Konzentration', conc.current.value, 'Wie stark dominieren die Schwergewichte den S&P?']);
+    const conc = results.get('conc-heat');
+    const cred = results.get('credit-heat');
+    if (conc) comps.push(['Abhängigkeit von Großkonzernen', conc.current.value, 'Wie stark dominieren die Schwergewichte den S&P?']);
     if (cred) comps.push(['Kredit-Sorglosigkeit', cred.current.value, 'Wie sorglos ist der Anleihemarkt gegenüber Risiko?']);
     return {
       bubble: {

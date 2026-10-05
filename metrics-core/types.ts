@@ -7,6 +7,19 @@ export type MetricKind = 'risk' | 'heat';
 
 export interface Zone { label: string; text: string; below: number; }
 
+/** Einordnung eines 0…1-Werts. Eine einzige Rechnung (`einordnen` in lage.ts) liefert sie für
+ *  Kartentext, Startseite und Generator — vorher hatte jede Stelle eigene Schwellen, und
+ *  derselbe Wert hieß auf der Karte „heißgelaufen", auf der Startseite „im Mittelfeld". */
+export type Lage = 'kauf' | 'warn' | 'tief' | 'hoch' | 'neutral';
+export interface Einordnung {
+  lage: Lage;
+  /** Tiefste Zone, unter der der Wert liegt — bei Risk die Stufe (etwa „Kapitulation"). */
+  zone: Zone | null;
+  /** Kennt die Metrik Kauf- oder Warnzonen? Ohne (Währungen) gibt es kein günstig oder teuer,
+   *  nur ungewöhnlich weit vom Trend. */
+  wertend: boolean;
+}
+
 export interface MetricCurrent {
   date: string; price: number; sma: number; value: number; staleDays: number;
 }
@@ -17,6 +30,8 @@ export interface MetricStats { vsAth: number; lo52: number; hi52: number; }
 
 export interface MetricSnapshot {
   id: string; label: string; sym: string; assetClass: AssetClass; kind: MetricKind;
+  /** Kurzname für Listen. Fehlt er, gilt der Teil des Labels vor dem ersten „ · ". */
+  short?: string;
   unit: string; dec: number; hex: string;
   current: MetricCurrent;
   /** −1 (stark akkumulieren) … +1 (stark reduzieren) — Basis für den Generator. */
@@ -58,11 +73,15 @@ export interface MetricResult {
 /** Eine Metrik = eine Datei. Neue Metriken registrieren sich nur hier. */
 export interface MetricDefinition {
   id: string; label: string; sym: string; assetClass: AssetClass; kind: MetricKind;
+  /** Kurzname für Listen — nötig, wo der Teil vor „ · " nicht eindeutig ist. */
+  short?: string;
   unit: string; dec: number; hex: string;
   zones: Zone[]; hotAbove: number | null;
   fetch(ctx: FetchContext): Promise<Row[]>;
   compute(rows: Row[]): MetricResult;
-  interpret(r: MetricResult): string;
+  /** Klartext zum aktuellen Wert. `e` ist die gemeinsame Einordnung — Aussagen über Zonen
+   *  gehören daraus abgeleitet, nie aus eigenen Schwellen. */
+  interpret(r: MetricResult, e: Einordnung): string;
   extra?(r: MetricResult): MetricSnapshot['extra'];
 }
 
@@ -91,7 +110,7 @@ export interface BubbleSnapshot { score: number; comps: [string, number, string]
 
 export interface Snapshot {
   version: 1;
-  /** true = mitgeliefertes Demo-JSON aus dem Build-Paket, NICHT vom täglichen Lauf.
+  /** true = mitgeliefertes Demo-JSON aus dem Build-Paket, NICHT vom Snapshot-Lauf.
    *  Der erste erfolgreiche GitHub-Action-Lauf schreibt die Datei ohne dieses Flag. */
   bootstrap?: boolean;
   generatedAt: string;

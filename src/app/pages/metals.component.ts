@@ -1,41 +1,28 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { ChartComponent, MetricSkeletonComponent, RailComponent } from '../shared/ui';
-import { MetricCardComponent } from '../shared/metric-card.component';
-import { sparklineSvg, TipData } from '../core/charts';
+import { PALETTE } from '../../../metrics-core/palette';
+import { ChartComponent, RailComponent } from '../shared/ui';
+import { MetricListComponent } from '../shared/metric-list.component';
+import { ChartSvg, sparklineSvg } from '../core/charts';
 import { fmt, MarketDataService, RatioSnapshot } from '../core/market-data.service';
 
-interface RatioVm extends RatioSnapshot {
-  noteHtml: SafeHtml;
-  chart: { svg: string; tip: TipData } | null;
-}
+interface RatioVm extends RatioSnapshot { chart: ChartSvg | null; }
 
 @Component({
   selector: 'app-metals',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ChartComponent, RailComponent, MetricCardComponent, MetricSkeletonComponent],
+  imports: [ChartComponent, RailComponent, MetricListComponent],
   template: `
-    @if (data.loading() && !metalMetrics().length) {
-      <app-metric-skeleton [count]="3"/>
-    } @else {
-      @for (m of metalMetrics(); track m.id) { <app-metric-card [m]="m"/> }
-      @empty {
-        <div class="bg-panel border border-dashed border-line rounded-2xl p-6 mb-4 text-muted text-[13.5px]">
-          Für diesen Bereich liegen noch keine Daten im Snapshot — der tägliche Berechnungslauf
-          (GitHub Action) füllt ihn beim nächsten erfolgreichen Durchgang automatisch.
-        </div>
-      }
-    }
+    <app-metric-list [metrics]="metalMetrics()" [skeletonCount]="3"/>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       @for (r of ratios(); track r.id) {
-        <div class="bg-panel border border-line rounded-2xl p-6">
-          <h2 class="text-[13px] font-bold tracking-widest uppercase text-muted mb-3.5">{{ r.title }}</h2>
+        <div class="card p-6">
+          <h2 class="card-title">{{ r.title }}</h2>
           <div class="font-mono text-[34px] font-semibold leading-none my-1">
             {{ fmt(r.cur, 1) }}
             <span class="text-xs text-muted font-normal ml-2">aktuell · Median {{ fmt(r.med, 1) }} · Perzentil {{ (r.pct * 100).toFixed(0) }} %</span>
           </div>
           <app-rail [value]="r.pct"/>
-          <p class="text-[13.5px] text-muted mt-2.5" [innerHTML]="r.noteHtml"></p>
+          <p class="text-[13.5px] text-muted mt-2.5 [&_b]:text-fg" [innerHTML]="r.note"></p>
           @if (r.chart) { <app-chart [svg]="r.chart.svg" [tip]="r.chart.tip"/> }
         </div>
       }
@@ -43,8 +30,7 @@ interface RatioVm extends RatioSnapshot {
   `,
 })
 export class MetalsComponent {
-  protected data = inject(MarketDataService);
-  private sanitizer = inject(DomSanitizer);
+  private data = inject(MarketDataService);
   protected readonly fmt = fmt;
 
   protected readonly metalMetrics = computed(() =>
@@ -53,7 +39,9 @@ export class MetalsComponent {
   protected readonly ratios = computed<RatioVm[]>(() =>
     this.data.ratios().map(r => ({
       ...r,
-      noteHtml: this.sanitizer.bypassSecurityTrustHtml(r.note.replaceAll('<b>', '<b class="text-fg">')),
-      chart: sparklineSvg(r.series.months, r.series.pct, '#8A97AC', 6, 'Perzentil', r.series.vals, ''),
+      chart: sparklineSvg({
+        dates: r.series.months, values: r.series.pct, color: PALETTE.muted,
+        label: 'Perzentil', prices: r.series.vals,
+      }),
     })));
 }
